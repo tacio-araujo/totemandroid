@@ -115,53 +115,50 @@
             display: none; 
         }
 
-        @media print {
+                @media print {
             body > *:not(#print-section) {
                 display: none !important;
             }
             
             @page {
-                /* Força o tamanho da página, mas se o driver estiver configurado, 
-                   o 'auto' evita que o navegador tente redimensionar e encolher */
-                size: auto !important; 
-                margin: 0mm !important; /* Remove totalmente as margens padrão do navegador */
+                size: auto !important; /* Deixa a altura livre para o conteúdo definir */
+                margin: 0 !important;  /* Remove margens do sistema */
             }
 
             html, body {
-                width: 100% !important; /* Usa 100% da largura da bobina detectada pelo driver */
+                width: 100% !important;
+                height: auto !important; /* LIBERADO: Permite que o papel estique */
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
             }
 
-            @media print {
-    #print-section {
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important; 
-        align-items: center !important;
-        text-align: center !important;
-        width: 100% !important;
-       
-        
-        /* 1. AJUSTE AS MARGENS INTERNAS AQUI: */
-        padding-top: 10px !important;
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-        
-        /* 2. ESTE É O SEGREDO: Aumente este valor para a etiqueta avançar mais */
-        padding-bottom: 54mm !important; /* Teste com 30mm, 35mm ou 40mm até chegar na altura ideal de corte */
-        
-        box-sizing: border-box !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-}
+            #print-section {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important; /* Alinha o texto no topo da etiqueta */
+                align-items: center !important;
+                text-align: center !important;
+                
+                width: 100% !important;
+                height: auto !important; /* LIBERADO: Sem tamanho fixo */
+                margin: 0 !important;
+                padding: 15px 15px 0px 15px !important; 
+                box-sizing: border-box !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
 
-            /* AJUSTE OS TAMANHOS DE FONTE AQUI: */
+                /* ========================================================
+                   AJUSTE DE AVANÇO DE CORTE:
+                   Mude este valor para controlar a quantidade de papel em 
+                   branco que a impressora vai cuspir antes de cortar.
+                   ======================================================== */
+                margin-bottom: 50mm !important; /* Se precisar de mais avanço, aumente para 60mm ou 70mm */
+            }
+
             #print-section .nome {
-                font-size: 60pt !important; /* Aumentamos para 26pt (o anterior era 18pt) */
+                font-size: 60pt !important; /* Tamanho grande e preenche bem a largura */
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
                 margin-top: 5px !important;
@@ -169,25 +166,32 @@
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
-                line-height: 1.0 !important;
+                color: #000000 !important;
+                line-height: 1.1 !important;
                 letter-spacing: -1px !important;
             }
 
             #print-section .empresa {
-                font-size: 36pt !important; /* Aumentamos para 16pt (o anterior era 12pt) */
+                font-size: 36pt !important;
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
                 margin-bottom: 3px !important;
                 width: 100% !important;
-                line-height: 1.0 !important;
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                color: #111111 !important;
+                line-height: 1.1 !important;
             }
 
             #print-section .cargo {
-                font-size: 32pt !important; /* Aumentamos para 12pt (o anterior era 10pt) */
+                font-size: 32pt !important;
                 font-weight: 500 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
-                line-height: 1.0 !important;
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                color: #333333 !important;
+                line-height: 1.1 !important;
             }
         }
 
