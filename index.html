@@ -125,41 +125,53 @@
                 margin: 0 !important;  /* Remove margens do sistema */
             }
 
-            html, body {
+                        html, body {
                 width: 100% !important;
-                height: auto !important; /* LIBERADO: Permite que o papel estique */
+                height: auto !important; 
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
+                
+                /* CORREÇÃO CRÍTICA: Destrava o overflow-hidden do Tailwind no print! */
+                overflow: visible !important; 
             }
 
             #print-section {
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: flex-start !important; /* Alinha o texto no topo da etiqueta */
+                justify-content: flex-start !important; 
                 align-items: center !important;
                 text-align: center !important;
                 
                 width: 100% !important;
-                height: auto !important; /* LIBERADO: Sem tamanho fixo */
+                height: auto !important; 
                 margin: 0 !important;
                 padding: 15px 15px 0px 15px !important; 
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
+                
+                /* CORREÇÃO CRÍTICA: Permite que o container estique sem travas */
+                overflow: visible !important; 
             }
 
             /* ========================================================
-               BLOCO ESPAÇADOR FÍSICO (ENGANA O DRIVER DA IMPRESSORA)
+               BLOCO ESPAÇADOR FÍSICO ATUALIZADO
                ======================================================== */
             .print-spacer {
                 display: block !important;
                 width: 100% !important;
                 clear: both !important;
-                /* AJUSTE O AVANÇO AQUI: Aumente ou diminua este valor (Ex: 50mm, 60mm, 70mm) */
-                height: 80mm !important; 
+                
+                /* CALIBRE O AVANÇO AQUI: Comece com 60mm. Se precisar de mais, suba. */
+                height: 60mm !important; 
+                
+                /* Força o navegador a entender que há um bloco físico ocupando espaço */
+                visibility: visible !important;
+                opacity: 0 !important; /* Invisível aos olhos, mas físico para o spooler */
             }
+
 
             #print-section .nome {
                 font-size: 60pt !important; /* Tamanho grande e preenche bem a largura */
@@ -1422,7 +1434,7 @@
         }
     }
 
-    function imprimirEtiquetaPOS80(nome, empresa, cargo) {
+        function imprimirEtiquetaPOS80(nome, empresa, cargo) {
         const antigo = document.getElementById('print-section');
         if (antigo) antigo.remove();
 
@@ -1433,8 +1445,9 @@
             <div class="nome">${nome}</div>
             ${empresa ? `<div class="empresa">${empresa}</div>` : ''}
             ${cargo ? `<div class="cargo">${cargo}</div>` : ''}
-            <!-- CORREÇÃO: Div física real que obriga o motor de impressão a empurrar a etiqueta -->
-            <div class="print-spacer"></div>
+            
+            <!-- CORREÇÃO: &nbsp; força o navegador a dar volume físico para a div -->
+            <div class="print-spacer">&nbsp;</div>
         `;
         
         document.body.appendChild(printDiv);
@@ -1445,6 +1458,7 @@
             if (printDiv) printDiv.remove();
         }, 1000);
     }
+
 
     function toggleLoading(active, buttonId, text) {
         const btn = document.getElementById(buttonId);
