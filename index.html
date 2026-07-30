@@ -115,35 +115,32 @@
             display: none; 
         }
 
-        @media print {
+                @media print {
             body > *:not(#print-section) {
                 display: none !important;
             }
             
             @page {
-                size: auto !important; /* Deixa a altura livre para o conteúdo definir */
+                size: auto !important; /* Altura livre controlada pelo conteúdo */
                 margin: 0 !important;  /* Remove margens do sistema */
             }
 
-                        html, body {
+            html, body {
                 width: 100% !important;
                 height: auto !important; 
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
-                
-                /* CORREÇÃO CRÍTICA: Destrava o overflow-hidden do Tailwind no print! */
-                overflow: visible !important; 
+                overflow: visible !important; /* Permite esticar além da tela do totem */
             }
 
             #print-section {
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: flex-start !important; 
-                align-items: center !important;
-                text-align: center !important;
-                
+                /* ========================================================
+                   MUDANÇA CRÍTICA: display: block em vez de flex
+                   Evita o bug de colapso de altura em spoolers de impressão
+                   ======================================================== */
+                display: block !important; 
                 width: 100% !important;
                 height: auto !important; 
                 margin: 0 !important;
@@ -151,34 +148,33 @@
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
-                
-                /* CORREÇÃO CRÍTICA: Permite que o container estique sem travas */
-                overflow: visible !important; 
+                overflow: visible !important;
+                text-align: center !important; /* Mantém todo o conteúdo centralizado */
             }
 
             /* ========================================================
-               BLOCO ESPAÇADOR FÍSICO ATUALIZADO
+               BLOCO ESPAÇADOR FÍSICO (MODELO BLOCK)
                ======================================================== */
             .print-spacer {
                 display: block !important;
                 width: 100% !important;
                 clear: both !important;
                 
-                /* CALIBRE O AVANÇO AQUI: Comece com 60mm. Se precisar de mais, suba. */
+                /* CALIBRE O AVANÇO AQUI: 
+                   Se com 50mm ou 60mm ainda faltar para a serrilha, suba para 70mm ou 80mm.
+                   O motor de bloco garante que a impressora vai respeitar essa medida milimetricamente. */
                 height: 60mm !important; 
                 
-                /* Força o navegador a entender que há um bloco físico ocupando espaço */
                 visibility: visible !important;
-                opacity: 0 !important; /* Invisível aos olhos, mas físico para o spooler */
+                opacity: 0 !important; /* Invisível no papel, mas ocupa espaço físico */
             }
 
-
             #print-section .nome {
-                font-size: 60pt !important; /* Tamanho grande e preenche bem a largura */
+                font-size: 60pt !important;
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
                 margin-top: 5px !important;
-                margin-bottom: 5px !important;
+                margin-bottom: 15px !important; /* Espaçamento abaixo do nome */
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
@@ -191,7 +187,7 @@
                 font-size: 36pt !important;
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
-                margin-bottom: 3px !important;
+                margin-bottom: 10px !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
@@ -210,6 +206,7 @@
                 line-height: 1.1 !important;
             }
         }
+
     </style>
 </head>
 <body class="bg-premium text-slate-100 h-[100dvh] flex flex-col justify-between p-4 md:p-8 select-none overflow-hidden">
@@ -1434,7 +1431,7 @@
         }
     }
 
-        function imprimirEtiquetaPOS80(nome, empresa, cargo) {
+            function imprimirEtiquetaPOS80(nome, empresa, cargo) {
         const antigo = document.getElementById('print-section');
         if (antigo) antigo.remove();
 
@@ -1445,8 +1442,7 @@
             <div class="nome">${nome}</div>
             ${empresa ? `<div class="empresa">${empresa}</div>` : ''}
             ${cargo ? `<div class="cargo">${cargo}</div>` : ''}
-            
-            <!-- CORREÇÃO: &nbsp; força o navegador a dar volume físico para a div -->
+            <!-- CORREÇÃO: Caractere invisível (&nbsp;) força a div block a renderizar sua altura no spooler -->
             <div class="print-spacer">&nbsp;</div>
         `;
         
@@ -1458,6 +1454,7 @@
             if (printDiv) printDiv.remove();
         }, 1000);
     }
+
 
 
     function toggleLoading(active, buttonId, text) {
