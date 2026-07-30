@@ -22,7 +22,7 @@
     <!-- Banco de dados local de contingência para operação offline -->
     <script src="database.js" onerror="console.warn('database.js não foi localizado. O totem funcionará apenas com conexão online.')"></script>
 
-        <style>
+    <style>
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             -webkit-tap-highlight-color: transparent;
@@ -115,7 +115,7 @@
             display: none; 
         }
 
-                @media print {
+        @media print {
             body > *:not(#print-section) {
                 display: none !important;
             }
@@ -148,13 +148,17 @@
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
+            }
 
-                /* ========================================================
-                   AJUSTE DE AVANÇO DE CORTE:
-                   Mude este valor para controlar a quantidade de papel em 
-                   branco que a impressora vai cuspir antes de cortar.
-                   ======================================================== */
-                margin-bottom: 90mm !important; /* Se precisar de mais avanço, aumente para 60mm ou 70mm */
+            /* ========================================================
+               BLOCO ESPAÇADOR FÍSICO (ENGANA O DRIVER DA IMPRESSORA)
+               ======================================================== */
+            .print-spacer {
+                display: block !important;
+                width: 100% !important;
+                clear: both !important;
+                /* AJUSTE O AVANÇO AQUI: Aumente ou diminua este valor (Ex: 50mm, 60mm, 70mm) */
+                height: 60mm !important; 
             }
 
             #print-section .nome {
@@ -194,9 +198,7 @@
                 line-height: 1.1 !important;
             }
         }
-
     </style>
-
 </head>
 <body class="bg-premium text-slate-100 h-[100dvh] flex flex-col justify-between p-4 md:p-8 select-none overflow-hidden">
 
@@ -1328,6 +1330,11 @@
             labelContador.textContent = tempoRestante;
         }
 
+        // Dispara a impressão física imediatamente ao abrir a tela de sucesso
+        setTimeout(() => {
+            dispararImpressaoManual();
+        }, 300);
+
         clearInterval(countdownInterval);
         countdownInterval = setInterval(() => {
             tempoRestante--;
@@ -1426,6 +1433,8 @@
             <div class="nome">${nome}</div>
             ${empresa ? `<div class="empresa">${empresa}</div>` : ''}
             ${cargo ? `<div class="cargo">${cargo}</div>` : ''}
+            <!-- CORREÇÃO: Div física real que obriga o motor de impressão a empurrar a etiqueta -->
+            <div class="print-spacer"></div>
         `;
         
         document.body.appendChild(printDiv);
@@ -1528,7 +1537,7 @@
             ajustarBotaoFinalSync("Sem Rede Física");
             return;
         }
-        atualizarProgressoSync(20, 'step-net', 'Conexão ativa!', 'icon-net');
+        atualizarProgressoSync(20, 'step-net', 'Conexão active!', 'icon-net');
 
         // --- ETAPA 2: AUTO-PULL (BAIXAR PLANILHA COMPLETA) ---
         await new Promise(r => setTimeout(r, 600));
@@ -1571,7 +1580,6 @@
         ajustarBotaoFinalSync("Sincronização Concluída!");
     }
 
-    // CORRIGIDO: Agora usa o parâmetro correto 'mensagem' em vez do inexistente 'message'
     function ajustarBotaoFinalSync(mensagem) {
         const btnFechar = document.getElementById('btn-fechar-sync');
         if (btnFechar) {
