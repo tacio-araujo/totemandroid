@@ -110,6 +110,7 @@
         /* ==========================================
            REGRAS CRÍTICAS PARA IMPRESSÃO NATIVA (POS80 / ZEBRA ZD220)
            ========================================== */
+           
         #print-section {
             display: none; 
         }
@@ -120,76 +121,68 @@
             }
             
             @page {
-                size: 80mm 50mm !important; /* Força o tamanho padrão de etiqueta de crachá */
-                margin: 0 !important;
+                /* Força o tamanho da página, mas se o driver estiver configurado, 
+                   o 'auto' evita que o navegador tente redimensionar e encolher */
+                size: auto !important; 
+                margin: 0mm !important; /* Remove totalmente as margens padrão do navegador */
             }
 
             html, body {
-                width: 80mm !important;
-                height: 50mm !important;
+                width: 100% !important; /* Usa 100% da largura da bobina detectada pelo driver */
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
-                overflow: hidden !important;
             }
 
             #print-section {
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: center !important; /* Centraliza verticalmente na etiqueta */
+                justify-content: center !important; 
                 align-items: center !important;
                 text-align: center !important;
                 
-                width: 80mm !important;
-                height: 50mm !important;
+                width: 100% !important; /* Ocupa toda a largura da etiqueta */
                 margin: 0 !important;
-                padding: 4mm 6mm !important; /* Margem de segurança nas bordas térmicas */
+                /* Ajuste o padding para dar um respiro nas bordas esquerda/direita */
+                padding: 10px 15px !important; 
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
-                
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
             }
 
+            /* AJUSTE OS TAMANHOS DE FONTE AQUI: */
             #print-section .nome {
-                font-size: 18pt !important; /* Tamanho perfeito para caber nomes longos sem quebrar */
+                font-size: 26pt !important; /* Aumentamos para 26pt (o anterior era 18pt) */
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
-                margin-top: 1mm !important;
-                margin-bottom: 2mm !important;
+                margin-top: 5px !important;
+                margin-bottom: 5px !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
-                color: #000000 !important;
-                line-height: 1.1 !important;
-                letter-spacing: -0.5px !important;
+                line-height: 1.0 !important;
+                letter-spacing: -1px !important;
             }
 
             #print-section .empresa {
-                font-size: 12pt !important; /* Proporcional e legível à distância */
+                font-size: 16pt !important; /* Aumentamos para 16pt (o anterior era 12pt) */
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
-                margin-bottom: 1mm !important;
+                margin-bottom: 3px !important;
                 width: 100% !important;
-                white-space: normal !important;
-                word-wrap: break-word !important;
-                color: #111111 !important;
-                line-height: 1.1 !important;
+                line-height: 1.0 !important;
             }
 
             #print-section .cargo {
-                font-size: 10pt !important; /* Subtítulo sutil */
+                font-size: 12pt !important; /* Aumentamos para 12pt (o anterior era 10pt) */
                 font-weight: 500 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
-                white-space: normal !important;
-                word-wrap: break-word !important;
-                color: #444444 !important;
-                line-height: 1.1 !important;
+                line-height: 1.0 !important;
             }
         }
+
     </style>
 
 </head>
