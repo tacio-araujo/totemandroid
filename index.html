@@ -19,7 +19,7 @@
     <!-- Biblioteca de Leitura de QR Code via Câmera -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-    <!-- Banco de dados local de contingência para operation offline -->
+    <!-- Banco de dados local de contingência para operação offline -->
     <script src="database.js" onerror="console.warn('database.js não foi localizado. O totem funcionará apenas com conexão online.')"></script>
 
     <style>
@@ -108,7 +108,7 @@
         }
 
         /* ==========================================
-           REGRAS CRÍTICAS PARA IMPRESSÃO NATIVA (Ajustadas para Bobina 80mm)
+           REGRAS CRÍTICAS PARA IMPRESSÃO NATIVA (POS80 / ZEBRA ZD220)
            ========================================== */
         #print-section {
             display: none; 
@@ -120,8 +120,8 @@
             }
             
             @page {
-                size: 80mm auto !important; 
-                margin: 0 !important; /* Zera margens eliminando cabeçalhos/rodapés indesejados */
+                size: 80mm auto !important; /* Retrato em vez de paisagem para evitar bug de rotação e escala */
+                margin: 0 !important;
             }
 
             html, body {
@@ -130,8 +130,6 @@
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
             }
 
             #print-section {
@@ -143,7 +141,7 @@
                 
                 width: 80mm !important;
                 margin: 0 !important;
-                padding: 6mm 4mm !important; 
+                padding: 10mm 4mm !important; 
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
@@ -152,25 +150,24 @@
                 break-inside: avoid !important;
             }
 
-            /* Tamanhos calibrados milimetricamente para evitar quebra de linha precoce */
             #print-section .nome {
-                font-size: 22pt !important; 
+                font-size: 38pt !important; /* Otimizado para máxima visualização na bobina de 80mm */
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
-                margin-top: 2mm !important;
-                margin-bottom: 2mm !important;
+                margin-top: 3mm !important;
+                margin-bottom: 4mm !important;
                 width: 100% !important;
-                white-space: normal !important;
+                white-space: normal !important; /* Permite quebra de linha se o nome for longo */
                 word-wrap: break-word !important;
                 color: #000000 !important;
                 line-height: 1.1 !important;
             }
 
             #print-section .empresa {
-                font-size: 14pt !important; 
+                font-size: 26pt !important; /* Otimizado para legibilidade sob distância de crachá */
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
-                margin-bottom: 2mm !important;
+                margin-bottom: 3mm !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
@@ -179,8 +176,8 @@
             }
 
             #print-section .cargo {
-                font-size: 11pt !important; 
-                font-weight: 500 !important;
+                font-size: 20pt !important; /* Tamanho ajustado e proporcional */
+                font-weight: 400 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
                 white-space: normal !important;
@@ -810,7 +807,18 @@
             statusDiv.innerText = "Iniciando câmera...";
         }
 
-        html5QrCode = new Html5Qrcode("qr-reader");
+        // CORREÇÃO: Impede a re-instanciação do Html5Qrcode caso ela já exista
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("qr-reader");
+        }
+
+        if (html5QrCode.isScanning) {
+            if (statusDiv) {
+                statusDiv.className = "text-xs font-semibold text-emerald-400";
+                statusDiv.innerText = "Câmera ativa! Aponte o QR Code";
+            }
+            return;
+        }
         
         const config = { 
             fps: 15, 
@@ -852,6 +860,7 @@
     }
 
     function tentarFallbackCameraGenerica(config, statusDiv) {
+        if (!html5QrCode) return;
         html5QrCode.start(
             { facingMode: "environment" }, 
             config,
@@ -874,7 +883,6 @@
     function desligarCamera() {
         if (html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().then(() => {
-                html5QrCode = null;
                 console.log("Câmera desligada com sucesso.");
             }).catch(err => console.error("Erro ao desligar câmera:", err));
         }
@@ -1206,7 +1214,7 @@
         }, 1200);
     }
 
-    async function cadastrarEConfirmar(event) {
+    function cadastrarEConfirmar(event) {
         event.preventDefault();
 
         if (timeoutDeSeguranca) {
@@ -1411,7 +1419,7 @@
         }
     }
 
-    function ejecutarImpressaoNativa(nome, empresa, cargo) {
+    function executarImpressaoNativa(nome, empresa, cargo) {
         const antigo = document.getElementById('print-section');
         if (antigo) antigo.remove();
 
@@ -1659,7 +1667,8 @@
             if (cadastros.length === 0) break;
             const cadastro = cadastros[0];
 
-            await new Promise((resolve) => {
+            // CORREÇÃO: Resolução da Promise com retorno booleano para interromper em caso de falha de conexão física
+            const sucesso = await new Promise((resolve) => {
                 const callbackNome = "jsonp_manual_cad_" + Math.round(100000 * Math.random());
                 window[callbackNome] = function() {
                     const fila = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
@@ -1668,14 +1677,24 @@
                     delete window[callbackNome];
                     const script = document.getElementById(callbackNome);
                     if (script) script.remove();
-                    resolve();
+                    resolve(true);
                 };
                 const script = document.createElement('script');
                 script.src = `${API_URL}?action=sincronizarCadastroOffline&nome=${encodeURIComponent(cadastro.nome)}&cpf=${encodeURIComponent(cadastro.cpf)}&email=${encodeURIComponent(cadastro.email)}&empresa=${encodeURIComponent(cadastro.empresa)}&cargo=${encodeURIComponent(cadastro.cargo)}&dataHora=${encodeURIComponent(cadastro.dataHora)}&callback=${callbackNome}`;
                 script.id = callbackNome;
-                script.onerror = () => { resolve(); }; 
+                script.onerror = () => { 
+                    delete window[callbackNome];
+                    const scriptEl = document.getElementById(callbackNome);
+                    if (scriptEl) scriptEl.remove();
+                    resolve(false); 
+                }; 
                 document.body.appendChild(script);
             });
+
+            if (!sucesso) {
+                console.warn("[Sync] Falha na rede física ao subir cadastros. Abortando loop.");
+                break; 
+            }
         }
     }
 
@@ -1685,7 +1704,8 @@
             if (checkins.length === 0) break;
             const checkin = checkins[0];
 
-            await new Promise((resolve) => {
+            // CORREÇÃO: Resolução da Promise com retorno booleano para interromper em caso de falha de conexão física
+            const sucesso = await new Promise((resolve) => {
                 const callbackNome = "jsonp_manual_chk_" + Math.round(100000 * Math.random());
                 window[callbackNome] = function() {
                     const fila = JSON.parse(localStorage.getItem('offline_checkins')) || [];
@@ -1694,14 +1714,24 @@
                     delete window[callbackNome];
                     const script = document.getElementById(callbackNome);
                     if (script) script.remove();
-                    resolve();
+                    resolve(true);
                 };
                 const script = document.createElement('script');
                 script.src = `${API_URL}?action=sincronizarCheckInOffline&cpf=${encodeURIComponent(checkin.cpf)}&dataHora=${encodeURIComponent(checkin.dataHora)}&callback=${callbackNome}`;
                 script.id = callbackNome;
-                script.onerror = () => { resolve(); };
+                script.onerror = () => { 
+                    delete window[callbackNome];
+                    const scriptEl = document.getElementById(callbackNome);
+                    if (scriptEl) scriptEl.remove();
+                    resolve(false); 
+                };
                 document.body.appendChild(script);
             });
+
+            if (!sucesso) {
+                console.warn("[Sync] Falha na rede física ao subir presenças. Abortando loop.");
+                break; 
+            }
         }
     }
 
@@ -1758,9 +1788,6 @@
 
         // Inicializa fila offline em segundo plano após 3 segundos
         setTimeout(sincronizarFilaParaOSheets, 3000);
-
-        // Ativa a webcam do leitor
-        setTimeout(ligarCamera, 1000);
     });
 
     // Detecta retorno de internet física do totem e limpa a fila de dados
