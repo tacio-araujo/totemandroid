@@ -19,7 +19,7 @@
     <!-- Biblioteca de Leitura de QR Code via Câmera -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-    <!-- Banco de dados local de contingência para operação offline -->
+    <!-- Banco de dados local de contingência para operation offline -->
     <script src="database.js" onerror="console.warn('database.js não foi localizado. O totem funcionará apenas com conexão online.')"></script>
 
     <style>
@@ -108,7 +108,7 @@
         }
 
         /* ==========================================
-           REGRAS CRÍTICAS PARA IMPRESSÃO NATIVA (POS80 / ZEBRA ZD220)
+           REGRAS CRÍTICAS PARA IMPRESSÃO NATIVA (Ajustadas para Bobina 80mm)
            ========================================== */
         #print-section {
             display: none; 
@@ -120,8 +120,8 @@
             }
             
             @page {
-                size: 80mm auto !important; /* Retrato em vez de paisagem para evitar bug de rotação e escala */
-                margin: 0 !important;
+                size: 80mm auto !important; 
+                margin: 0 !important; /* Zera margens eliminando cabeçalhos/rodapés indesejados */
             }
 
             html, body {
@@ -130,6 +130,8 @@
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
             #print-section {
@@ -141,7 +143,7 @@
                 
                 width: 80mm !important;
                 margin: 0 !important;
-                padding: 10mm 4mm !important; 
+                padding: 6mm 4mm !important; 
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
@@ -150,24 +152,25 @@
                 break-inside: avoid !important;
             }
 
+            /* Tamanhos calibrados milimetricamente para evitar quebra de linha precoce */
             #print-section .nome {
-                font-size: 38pt !important; /* Otimizado para máxima visualização na bobina de 80mm */
+                font-size: 22pt !important; 
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
-                margin-top: 3mm !important;
-                margin-bottom: 4mm !important;
+                margin-top: 2mm !important;
+                margin-bottom: 2mm !important;
                 width: 100% !important;
-                white-space: normal !important; /* Permite quebra de linha se o nome for longo */
+                white-space: normal !important;
                 word-wrap: break-word !important;
                 color: #000000 !important;
                 line-height: 1.1 !important;
             }
 
             #print-section .empresa {
-                font-size: 26pt !important; /* Otimizado para legibilidade sob distância de crachá */
+                font-size: 14pt !important; 
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
-                margin-bottom: 3mm !important;
+                margin-bottom: 2mm !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
@@ -176,8 +179,8 @@
             }
 
             #print-section .cargo {
-                font-size: 20pt !important; /* Tamanho ajustado e proporcional */
-                font-weight: 400 !important;
+                font-size: 11pt !important; 
+                font-weight: 500 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
                 white-space: normal !important;
@@ -1408,7 +1411,7 @@
         }
     }
 
-    function executarImpressaoNativa(nome, empresa, cargo) {
+    function ejecutarImpressaoNativa(nome, empresa, cargo) {
         const antigo = document.getElementById('print-section');
         if (antigo) antigo.remove();
 
