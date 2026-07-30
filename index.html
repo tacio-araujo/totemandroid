@@ -22,7 +22,7 @@
     <!-- Banco de dados local de contingência para operação offline -->
     <script src="database.js" onerror="console.warn('database.js não foi localizado. O totem funcionará apenas com conexão online.')"></script>
 
-    <style>
+        <style>
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             -webkit-tap-highlight-color: transparent;
@@ -120,28 +120,31 @@
             }
             
             @page {
-                size: 80mm auto !important; /* Retrato em vez de paisagem para evitar bug de rotação e escala */
+                size: 80mm 50mm !important; /* Força o tamanho padrão de etiqueta de crachá */
                 margin: 0 !important;
             }
 
             html, body {
                 width: 80mm !important;
+                height: 50mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
+                overflow: hidden !important;
             }
 
             #print-section {
                 display: flex !important;
                 flex-direction: column !important;
-                justify-content: flex-start !important; 
+                justify-content: center !important; /* Centraliza verticalmente na etiqueta */
                 align-items: center !important;
                 text-align: center !important;
                 
                 width: 80mm !important;
+                height: 50mm !important;
                 margin: 0 !important;
-                padding: 10mm 4mm !important; 
+                padding: 4mm 6mm !important; /* Margem de segurança nas bordas térmicas */
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
@@ -151,23 +154,24 @@
             }
 
             #print-section .nome {
-                font-size: 38pt !important; /* Otimizado para máxima visualização na bobina de 80mm */
+                font-size: 18pt !important; /* Tamanho perfeito para caber nomes longos sem quebrar */
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
-                margin-top: 3mm !important;
-                margin-bottom: 4mm !important;
+                margin-top: 1mm !important;
+                margin-bottom: 2mm !important;
                 width: 100% !important;
-                white-space: normal !important; /* Permite quebra de linha se o nome for longo */
+                white-space: normal !important;
                 word-wrap: break-word !important;
                 color: #000000 !important;
                 line-height: 1.1 !important;
+                letter-spacing: -0.5px !important;
             }
 
             #print-section .empresa {
-                font-size: 26pt !important; /* Otimizado para legibilidade sob distância de crachá */
+                font-size: 12pt !important; /* Proporcional e legível à distância */
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
-                margin-bottom: 3mm !important;
+                margin-bottom: 1mm !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
@@ -176,17 +180,18 @@
             }
 
             #print-section .cargo {
-                font-size: 20pt !important; /* Tamanho ajustado e proporcional */
-                font-weight: 400 !important;
+                font-size: 10pt !important; /* Subtítulo sutil */
+                font-weight: 500 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
-                color: #333333 !important;
+                color: #444444 !important;
                 line-height: 1.1 !important;
             }
         }
     </style>
+
 </head>
 <body class="bg-premium text-slate-100 h-[100dvh] flex flex-col justify-between p-4 md:p-8 select-none overflow-hidden">
 
@@ -338,7 +343,7 @@
             <!-- GRID AJUSTADA PARA MAIOR COMPACTAÇÃO VERTICAL -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto px-2">
                 <!-- QR CODE (Câmera do Totem) -->
-                <button onclick="changeScreen('screen-qrcode')" class="p-5 md:p-6 bg-slate-900/80 border border-[#0096d6] hover:border-[#0096d6]/80 rounded-2xl text-left transition-all duration-350 transform hover:-translate-y-0.5 active:scale-98 group shadow-lg shadow-sky-950/40 animate-pulse" style="animation-duration: 4s;">
+                <button onclick="changeScreen('screen-qrcode')" class="p-5 md:p-6 bg-slate-900/80 border border-[#0096d6] hover:border-[#0096d6]/80 rounded-2xl text-left transition-all duration-350 transform hover:-translate-y-0.5 active:scale-98 group shadow-lg shadow-sky-950/40">
                     <div class="h-10 w-10 bg-[#0096d6]/20 rounded-xl flex items-center justify-center text-[#0096d6] text-xl font-extrabold mb-3 group-hover:bg-[#0096d6] group-hover:text-white transition-all">
                         <i class="fa-solid fa-camera"></i>
                     </div>
@@ -542,24 +547,29 @@
 
     <!-- SCRIPTS DE CONTROLE E INTEGRAÇÃO DE CONEXÃO E LEITURA -->
     <script>
-    // === CONFIGURAÇÕES E VARIÁVEIS DE ESTADO GLOBAL ===
     const API_URL = "https://script.google.com/macros/s/AKfycbxo82LvC5Wkt7zbHCqv8m9oE4ipzoG9_x3Mt75l9gdpL4yVfbpwWju7nfw6aic6q1BB0Q/exec"; 
+    
+    // PIN do administrador para controle técnico local
     const PIN_ADMINISTRADOR = "1234"; 
 
     let countdownInterval;
     let timeoutDeSeguranca = null; 
     let checkinConcluidoComSucesso = false; 
 
+    // CONFIGURAÇÕES DO CRON DE SINCRONIZAÇÃO AUTOMÁTICA
     const INTERVALO_SYNC_UP = 20000;    
     const INTERVALO_SYNC_DOWN = 300000; 
     let isSyncing = false;               
 
-    // Inicialização segura de bancos locais
+    // Inicialização das tabelas de armazenamento local
     if (!localStorage.getItem('offline_checkins')) localStorage.setItem('offline_checkins', JSON.stringify([]));
     if (!localStorage.getItem('offline_cadastros')) localStorage.setItem('offline_cadastros', JSON.stringify([]));
     if (!localStorage.getItem('PARTICIPANTES_CACHE')) localStorage.setItem('PARTICIPANTES_CACHE', JSON.stringify([]));
 
+    // Controle da Câmera
     let html5QrCode = null;
+
+    // Dados temporários da impressão
     let dadosEtiquetaAtual = { nome: '', empresa: '', cargo: '' };
 
 
@@ -571,7 +581,7 @@
         if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement) {
             if (doc.requestFullscreen) {
                 doc.requestFullscreen();
-            } else if (doc.mozRequestFullScreen) {
+            } else if (doc.mozRequestFullScreen) { /* Firefox */
                 doc.mozRequestFullScreen();
             } else if (doc.webkitRequestFullscreen) {
                 doc.webkitRequestFullscreen();
@@ -579,7 +589,7 @@
         } else {
             if (document.exitFullscreen) {
                 document.exitFullscreen();
-            } else if (document.mozCancelFullScreen) {
+            } else if (document.mozCancelFullScreen) { /* Firefox */
                 document.mozCancelFullScreen();
             } else if (document.webkitExitFullscreen) {
                 document.webkitExitFullscreen();
@@ -621,6 +631,15 @@
                 input.focus();
             }
         }
+    }
+
+    const pinInputEl = document.getElementById('admin-pin-input');
+    if (pinInputEl) {
+        pinInputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                validarPinAdmin();
+            }
+        });
     }
 
     function fecharAdminMenu() {
@@ -700,6 +719,7 @@
             document.activeElement.value = "";
             document.activeElement.blur(); 
         }
+        
         processarLeituraFisica(conteudoLido);
     }
 
@@ -748,10 +768,41 @@
         }, 400); 
     }
 
-
     /* ========================================================
-       COMPORTAMENTO E NAVEGAÇÃO DE TELAS
+       COMPORTAMENTO E MÁSCARA DA TELA DE CPF
        ======================================================== */
+    const inputSearch = document.getElementById('checkin-search');
+    if (inputSearch) {
+        inputSearch.addEventListener('input', e => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            
+            if (value.length === 11) {
+                e.target.blur(); 
+                toggleLoading(true, 'btn-buscar', 'Buscando cadastro...');
+                executarCheckInPorTermo(value);
+            }
+
+            if (value.length > 9) {
+                value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, "$1.$2.$3-$4");
+            } else if (value.length > 6) {
+                value = value.replace(/^(\d{3})(\d{3})(\d{1,3})$/, "$1.$2.$3");
+            } else if (value.length > 3) {
+                value = value.replace(/^(\d{3})(\d{1,3})$/, "$1.$2");
+            }
+            e.target.value = value;
+        });
+    }
+
+    const inputCadCpf = document.getElementById('cad-cpf');
+    if (inputCadCpf) {
+        inputCadCpf.addEventListener('input', e => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            e.target.value = value;
+        });
+    }
+
     function changeScreen(screenId) {
         if (screenId !== 'screen-qrcode') {
             desligarCamera();
@@ -793,32 +844,30 @@
         if (document.activeElement) document.activeElement.blur();
 
         destravarTela();
+        
+        const btnBuscar = document.getElementById('btn-buscar');
+        if (btnBuscar) {
+            btnBuscar.innerText = 'Buscar e Confirmar Presença';
+            btnBuscar.disabled = false;
+        }
+        const btnCadastrar = document.getElementById('btn-cadastrar');
+        if (btnCadastrar) {
+            btnCadastrar.innerText = 'Concluir Inscrição';
+            btnCadastrar.disabled = false;
+        }
+        
         changeScreen('screen-home');
     }
 
-
     /* ========================================================
-       MÓDULO DE LEITURA DE QR CODE (WEBCAM DO TOTEM)
+       MÓDULO DE LEITURA DE QR CODE (WEB-CAMERA COMPATÍVEL COM HARDWARE DE TOTEM)
        ======================================================== */
     function ligarCamera() {
         const statusDiv = document.getElementById('qr-status');
-        if (statusDiv) {
-            statusDiv.className = "text-sm font-semibold text-yellow-500";
-            statusDiv.innerText = "Iniciando câmera...";
-        }
+        statusDiv.className = "text-sm font-semibold text-yellow-500";
+        statusDiv.innerText = "Iniciando câmera...";
 
-        // CORREÇÃO: Impede a re-instanciação do Html5Qrcode caso ela já exista
-        if (!html5QrCode) {
-            html5QrCode = new Html5Qrcode("qr-reader");
-        }
-
-        if (html5QrCode.isScanning) {
-            if (statusDiv) {
-                statusDiv.className = "text-xs font-semibold text-emerald-400";
-                statusDiv.innerText = "Câmera ativa! Aponte o QR Code";
-            }
-            return;
-        }
+        html5QrCode = new Html5Qrcode("qr-reader");
         
         const config = { 
             fps: 15, 
@@ -826,76 +875,64 @@
             aspectRatio: 1.0 
         };
 
+        // PASSO 1: Mapeia todas as câmeras físicas no Android do totem
         Html5Qrcode.getCameras().then(devices => {
             if (devices && devices.length > 0) {
-                let selectedCamera = devices[0];
-                for (const device of devices) {
-                    if (device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('traseira')) {
-                        selectedCamera = device;
-                        break;
-                    }
-                }
+                const cameraId = devices[0].id; 
                 
                 html5QrCode.start(
-                    selectedCamera.id,
+                    cameraId, 
                     config,
                     onScanSucesso,
                     onScanFalha
                 ).then(() => {
-                    if (statusDiv) {
-                        statusDiv.className = "text-xs font-semibold text-emerald-400";
-                        statusDiv.innerText = "Câmera ativa! Aponte o QR Code";
-                    }
+                    statusDiv.className = "text-xs font-semibold text-emerald-400";
+                    statusDiv.innerText = "Câmera ativa! Aponte o QR Code.";
                 }).catch(err => {
-                    console.warn("Erro ao iniciar câmera selecionada, tentando facingMode nativo:", err);
+                    console.warn("Erro ao iniciar via ID físico, tentando fallback genérico...");
                     tentarFallbackCameraGenerica(config, statusDiv);
                 });
             } else {
                 tentarFallbackCameraGenerica(config, statusDiv);
             }
         }).catch(err => {
-            console.warn("Erro ao varrer dispositivos de câmera, forçando fallback:", err);
+            console.warn("Não listou dispositivos de vídeo, forçando inicialização...");
             tentarFallbackCameraGenerica(config, statusDiv);
         });
     }
 
     function tentarFallbackCameraGenerica(config, statusDiv) {
-        if (!html5QrCode) return;
         html5QrCode.start(
             { facingMode: "environment" }, 
             config,
             onScanSucesso,
             onScanFalha
         ).then(() => {
-            if (statusDiv) {
-                statusDiv.className = "text-xs font-semibold text-emerald-400";
-                statusDiv.innerText = "Câmera ativa!";
-            }
+            statusDiv.className = "text-xs font-semibold text-emerald-400";
+            statusDiv.innerText = "Câmera ativa!";
         }).catch(err => {
-            console.error("Falha geral de inicialização da câmera:", err);
-            if (statusDiv) {
-                statusDiv.className = "text-xs font-semibold text-rose-500";
-                statusDiv.innerText = "Permissão negada ou câmera offline.";
-            }
+            console.error("Falha geral de permissão/inicialização da câmera:", err);
+            statusDiv.className = "text-xs font-semibold text-rose-500";
+            statusDiv.innerText = "Permissão negada ou câmera desconectada.";
         });
     }
 
     function desligarCamera() {
         if (html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().then(() => {
-                console.log("Câmera desligada com sucesso.");
-            }).catch(err => console.error("Erro ao desligar câmera:", err));
+                html5QrCode = null;
+                console.log("Câmera desligada.");
+            }).catch(err => {
+                console.error("Erro ao finalizar câmera:", err);
+            });
         }
     }
 
     function onScanSucesso(decodedText, decodedResult) {
         if (checkinConcluidoComSucesso) return;
 
-        const statusDiv = document.getElementById('qr-status');
-        if (statusDiv) {
-            statusDiv.className = "text-xs font-semibold text-emerald-400 animate-pulse";
-            statusDiv.innerText = "Processando QR Code...";
-        }
+        document.getElementById('qr-status').className = "text-xs font-semibold text-emerald-400 animate-pulse";
+        document.getElementById('qr-status').innerText = "Processando QR Code...";
 
         desligarCamera();
 
@@ -915,25 +952,25 @@
 
 
     /* ========================================================
-       MÓDULO: AUTO-PULL (SINCRONIZAÇÃO DA PLANILHA PARA CACHE LOCAL)
+       MÓDULO 1: AUTO-PULL (SINCRONIZAÇÃO AUTOMÁTICA SHEETS -> CACHE)
        ======================================================== */
     function atualizarBancoLocalDoSheets(callbackSucesso = null, callbackErro = null) {
         if (!navigator.onLine) {
-            console.log("[Auto-Pull] Dispositivo offline. Sincronização abortada.");
-            if (callbackErro) callbackErro("Offline");
+            console.log("[Auto-Pull] Dispositivo offline. Abortando atualização.");
+            if (callbackErro) callbackErro("Sem conexão de rede");
             return;
         }
 
-        console.log("[Auto-Pull] Buscando base de dados centralizada...");
+        console.log("[Auto-Pull] Buscando novos registros no Google Sheets...");
         const callbackNome = "jsonp_pull_" + Math.round(100000 * Math.random());
 
         window[callbackNome] = function(dados) {
             if (dados && dados.status === "sucesso" && dados.participantes) {
                 localStorage.setItem('PARTICIPANTES_CACHE', JSON.stringify(dados.participantes));
-                console.log(`[Auto-Pull] Cache sincronizado! Total: ${dados.participantes.length} registros.`);
+                console.log(`[Auto-Pull] Cache atualizado com sucesso! ${dados.participantes.length} participantes.`);
                 if (callbackSucesso) callbackSucesso(dados.participantes.length);
             } else {
-                if (callbackErro) callbackErro("Dados malformados");
+                if (callbackErro) callbackErro("Resposta inválida da API");
             }
             delete window[callbackNome];
             const scriptEl = document.getElementById(callbackNome);
@@ -944,21 +981,20 @@
         script.src = `${API_URL}?action=obterListaCompleta&callback=${callbackNome}`;
         script.id = callbackNome;
         script.onerror = () => {
-            console.error("[Auto-Pull] Falha crítica de conexão de dados.");
-            if (callbackErro) callbackErro("Falha física");
+            console.error("[Auto-Pull] Falha de comunicação ao atualizar cache.");
+            if (callbackErro) callbackErro("Falha física de requisição");
         };
         document.body.appendChild(script);
     }
 
 
     /* ========================================================
-       MÓDULO: BUSCA HÍBRIDA MULTI-BASE
+       MÓDULO 2: CASCATA DE BUSCA HÍBRIDA (VELOCIDADE DE RESPOSTA < 500ms)
        ======================================================== */
     function buscarParticipanteNaCascata(termo) {
         const termoLimpo = termo.replace(/\D/g, '').trim();
         const tLower = termo.toLowerCase().trim();
 
-        // Camada 1: Cache Local do Sheets
         const cacheStr = localStorage.getItem('PARTICIPANTES_CACHE');
         if (cacheStr) {
             const cache = JSON.parse(cacheStr);
@@ -970,7 +1006,6 @@
             if (localizado) return localizado;
         }
 
-        // Camada 2: Contingência database.js estático
         try {
             if (typeof PARTICIPANTES_LOCAL !== 'undefined') {
                 const localizadoLocal = PARTICIPANTES_LOCAL.find(p => {
@@ -981,7 +1016,7 @@
                 if (localizadoLocal) return localizadoLocal;
             }
         } catch(e) {
-            console.warn("database.js não encontrado para consulta.");
+            console.warn("Nenhum database.js localizado em disco.");
         }
 
         return null;
@@ -989,7 +1024,7 @@
 
 
     /* ========================================================
-       MÓDULO: AUTO-PUSH (SINCRONIZADOR EM SEGUNDO PLANO)
+       MÓDULO 3: AUTO-PUSH (SINCRONIZADOR SILENCIOSO EM SEGUNDO PLANO)
        ======================================================== */
     function sincronizarFilaParaOSheets() {
         if (!navigator.onLine || isSyncing) return;
@@ -1000,16 +1035,15 @@
         if (checkinsOffline.length === 0 && cadastrosOffline.length === 0) return;
 
         isSyncing = true;
-        console.log(`[Auto-Push] Processando pacotes na fila de rede local...`);
+        console.log(`[Auto-Push] Sincronizando dados pendentes...`);
 
-        // Subir Novos Cadastros Primeiro
         if (cadastrosOffline.length > 0) {
             const cadastro = cadastrosOffline[0];
             const callbackNome = "jsonp_push_cad_" + Math.round(100000 * Math.random());
 
             window[callbackNome] = function(resposta) {
                 if (resposta && resposta.status === 'sucesso') {
-                    console.log(`[Auto-Push] Cadastro offline sincronizado: ${cadastro.nome}`);
+                    console.log(`[Auto-Push] Novo cadastro de ${cadastro.nome} sincronizado!`);
                     const filaAtual = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
                     filaAtual.shift(); 
                     localStorage.setItem('offline_cadastros', JSON.stringify(filaAtual));
@@ -1018,6 +1052,7 @@
                 const scriptEl = document.getElementById(callbackNome);
                 if (scriptEl) scriptEl.remove();
                 isSyncing = false;
+                
                 setTimeout(sincronizarFilaParaOSheets, 1000);
             };
 
@@ -1029,14 +1064,13 @@
             return;
         }
 
-        // Subir Check-ins
         if (checkinsOffline.length > 0) {
             const checkin = checkinsOffline[0];
             const callbackNome = "jsonp_push_chk_" + Math.round(100000 * Math.random());
 
             window[callbackNome] = function(resposta) {
                 if (resposta && (resposta.status === 'sucesso' || resposta.status === 'nao_encontrado')) {
-                    console.log(`[Auto-Push] Presença offline sincronizada: ${checkin.cpf}`);
+                    console.log(`[Auto-Push] Presença offline do CPF ${checkin.cpf} sincronizada!`);
                     const filaAtual = JSON.parse(localStorage.getItem('offline_checkins')) || [];
                     filaAtual.shift(); 
                     localStorage.setItem('offline_checkins', JSON.stringify(filaAtual));
@@ -1045,6 +1079,7 @@
                 const scriptEl = document.getElementById(callbackNome);
                 if (scriptEl) scriptEl.remove();
                 isSyncing = false;
+
                 setTimeout(sincronizarFilaParaOSheets, 1000);
             };
 
@@ -1059,28 +1094,14 @@
 
 
     /* ========================================================
-       PROCESSAMENTO DE ENTRADAS DE DADOS
+       PROCESSAMENTO PRINCIPAL DE ENTRADAS
        ======================================================== */
-    function buscarEConfirmar() {
-        const input = document.getElementById('checkin-search');
-        if (!input) return;
-        const valor = input.value.replace(/\D/g, '').trim();
-        if (valor.length < 3) {
-            alert("Por favor, digite um CPF válido.");
-            destravarTela();
-            return;
-        }
-        toggleLoading(true, 'btn-buscar', 'Buscando cadastro...');
-        executarCheckInPorTermo(valor);
-    }
-
     function executarCheckInPorTermo(termo) {
         checkinConcluidoComSucesso = false;
         const termoLimpo = termo.replace(/\D/g, '').trim();
 
         if (timeoutDeSeguranca) clearTimeout(timeoutDeSeguranca);
 
-        // Busca rápida no cache local de contingência (velocidade de processamento de < 200ms)
         const participante = buscarParticipanteNaCascata(termo);
         if (participante) {
             checkinConcluidoComSucesso = true;
@@ -1089,35 +1110,34 @@
             return;
         }
 
-        // Se não achou offline e está sem conexão, cancela para não travar
         if (!navigator.onLine) {
-            console.warn("Dispositivo offline e participante não localizado.");
+            console.warn("Dispositivo offline e participante não encontrado localmente.");
             atualizarStatusOverlay(
                 "Não Encontrado", 
-                "Inscrição não cadastrada localmente.", 
+                "Inscrição não localizada localmente. Redirecionando...", 
                 "fa-user-slash",
                 "border-rose-500",
                 "text-rose-500"
             );
+            
             setTimeout(() => {
-                alert("Inscrição não encontrada. Vá para a tela de inscrição presencial!");
+                alert("Inscrição não localizada. Por favor, faça seu cadastro presencial!");
                 backToHome();
             }, 1500);
             return;
         }
 
         atualizarStatusOverlay(
-            "Pesquisando", 
-            "Buscando novos registros cadastrados...", 
+            "Conectando", 
+            "Buscando novos registros na nuvem...", 
             "fa-database",
             "border-[#0096d6]",
             "text-[#0096d6]"
         );
 
-        // Fail-safe de conexão (8 segundos de limite de resposta na nuvem)
         timeoutDeSeguranca = setTimeout(() => {
             if (!checkinConcluidoComSucesso) {
-                console.warn("Conexão excedeu o limite. Forçando check-in alternativo.");
+                console.warn("Servidor instável. Forçando entrada como visitante.");
                 destravarTela();
                 registrarCheckInOffline({
                     cpf: termoLimpo || "00000000000",
@@ -1148,8 +1168,8 @@
                 const cargoReal = dados.cargo || "";
 
                 atualizarStatusOverlay(
-                    "Sucesso", 
-                    `Olá, ${nomeReal.split(' ')[0]}! Gerando sua credencial...`, 
+                    "Participante Identificado!", 
+                    `Olá, ${nomeReal.split(' ')[0]}! Gerando credencial...`, 
                     "fa-user-check",
                     "border-emerald-500",
                     "text-emerald-400"
@@ -1157,18 +1177,19 @@
 
                 setTimeout(() => {
                     mostrarSucesso(nomeReal, empresaReal, cargoReal);
-                }, 1200); 
+                }, 1500); 
                 
             } else {
                 atualizarStatusOverlay(
                     "Não Encontrado", 
-                    "Sua inscrição não foi identificada.", 
+                    "Inscrição não localizada. Redirecionando...", 
                     "fa-user-slash",
                     "border-rose-500",
                     "text-rose-500"
                 );
+                
                 setTimeout(() => {
-                    alert("Inscrição não encontrada. Faça o cadastro na hora para participar!");
+                    alert("Inscrição não localizada. Por favor, faça seu cadastro presencial!");
                     backToHome();
                 }, 1500);
             }
@@ -1179,8 +1200,9 @@
         script.id = callbackName;
         script.onerror = function() {
             destravarTela();
-            console.error("Falha ao alcançar servidor central do Sheets.");
+            console.error("Erro de conexão na requisição em tempo real.");
         };
+
         document.body.appendChild(script);
     }
 
@@ -1200,8 +1222,8 @@
         }
 
         atualizarStatusOverlay(
-            "Identificado!", 
-            `Bem-vindo, ${participante.nome.split(' ')[0]}! Gerando sua credencial...`, 
+            "Check-In Confirmado!", 
+            `Olá, ${participante.nome.split(' ')[0]}! Liberando credencial...`, 
             "fa-user-shield",
             "border-emerald-500",
             "text-emerald-400"
@@ -1211,10 +1233,10 @@
 
         setTimeout(() => {
             mostrarSucesso(participante.nome, participante.empresa, participante.cargo);
-        }, 1200);
+        }, 1500);
     }
 
-    function cadastrarEConfirmar(event) {
+    async function cadastrarEConfirmar(event) {
         event.preventDefault();
 
         if (timeoutDeSeguranca) {
@@ -1229,7 +1251,7 @@
         const empresaLocal = document.getElementById('cad-empresa').value.trim() || "N/A";
         const cargoLocal = document.getElementById('cad-cargo').value.trim() || "N/A";
 
-        toggleLoading(true, 'btn-cadastrar', 'Cadastrando dados...');
+        toggleLoading(true, 'btn-cadastrar', 'Realizando cadastro...');
 
         let cadastrosOffline = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
         cadastrosOffline.push({
@@ -1246,6 +1268,7 @@
         destravarTela();
         
         setTimeout(sincronizarFilaParaOSheets, 500);
+
         mostrarSucesso(nomeLocal, empresaLocal, cargoLocal);
     }
 
@@ -1286,7 +1309,6 @@
             empresaBox.classList.add('hidden');
         }
 
-        // Variável de spool de escopo global para alimentar a impressão nativa/API
         dadosEtiquetaAtual = {
             nome: nome,
             empresa: empLimpa,
@@ -1300,11 +1322,6 @@
         if (labelContador) {
             labelContador.textContent = tempoRestante;
         }
-
-        // Dispara a emissão imediatamente ao abrir a tela de sucesso
-        setTimeout(() => {
-            dispararImpressaoManual();
-        }, 300);
 
         clearInterval(countdownInterval);
         countdownInterval = setInterval(() => {
@@ -1320,139 +1337,15 @@
         }, 1000);
     }
 
-
     /* ========================================================
-       MÓDULO DE IMPRESSÃO (API DE HARDWARE E AUTO-HEALING NATIVO)
-       ======================================================== */
-    function dispararImpressaoManual() {
-        if (dadosEtiquetaAtual.nome) {
-            imprimirEtiquetaPOS80(
-                dadosEtiquetaAtual.nome, 
-                dadosEtiquetaAtual.empresa, 
-                dadosEtiquetaAtual.cargo
-            );
-        } else {
-            console.warn("[Emissão] Spooler de impressão vazio.");
-        }
-    }
-
-    async function imprimirEtiquetaPOS80(nome, empresa, cargo) {
-        console.log(`[Emissão] Iniciando geração da credencial física para: ${nome}`);
-        
-        const cleanNome = nome ? nome.toUpperCase() : "PARTICIPANTE";
-        const cleanEmpresa = (empresa && empresa !== "N/A" && empresa !== "NULL" && empresa !== "null") ? empresa.toUpperCase() : "";
-        const cleanCargo = (cargo && cargo !== "N/A" && cargo !== "NULL" && cargo !== "null") ? cargo.toUpperCase() : "";
-
-        // Payload estruturado para drivers de bobinas térmicas de autoatendimento
-        const payload = {
-            content: [
-                { type: "text", value: "INFINITY", align: "center", weight: "bold", size: "large" },
-                { type: "divider" },
-                { type: "text", value: cleanNome, align: "center", weight: "bold", size: "large" },
-                cleanEmpresa ? { type: "text", value: cleanEmpresa, align: "center", weight: "bold", size: "normal" } : null,
-                cleanCargo ? { type: "text", value: cleanCargo, align: "center", weight: "normal", size: "normal" } : null,
-                { type: "divider" },
-                { type: "feed", lines: 3 }
-            ].filter(Boolean)
-        };
-
-        const rawBody = JSON.stringify(payload);
-        const rotas = [
-            "http://127.0.0.1:9100/print",
-            "http://localhost:9100/print"
-        ];
-        
-        let sucessoImp = false;
-
-        for (let url of rotas) {
-            try {
-                console.log(`[Emissão] Tentando API local em: ${url}`);
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 1800);
-
-                // Tentativa com CORS padrão
-                const response = await fetch(url, {
-                    method: "POST",
-                    mode: "cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: rawBody,
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    console.log(`[Emissão] Sucesso via Cleanter: ${url}`);
-                    sucessoImp = true;
-                    break;
-                }
-            } catch (e) {
-                console.warn(`[Emissão] Bloqueio de conexão ou CORS na rota ${url}. Tentando bypass com no-cors...`);
-                
-                // Fallback tático: Envio silencioso no-cors para furar restrições de navegadores Kiosk
-                try {
-                    const controllerBypass = new AbortController();
-                    const timeoutBypassId = setTimeout(() => controllerBypass.abort(), 1500);
-
-                    await fetch(url, {
-                        method: "POST",
-                        mode: "no-cors",
-                        headers: { "Content-Type": "text/plain" }, // text/plain elimina o envio de preflight OPTIONS
-                        body: rawBody,
-                        signal: controllerBypass.signal
-                    });
-
-                    clearTimeout(timeoutBypassId);
-                    console.log(`[Emissão] Pacote disparado via bypass no-cors para: ${url}`);
-                    sucessoImp = true;
-                    break;
-                } catch(e2) {
-                    console.warn(`[Emissão] Falha no bypass silencioso: ${e2.message}`);
-                }
-            }
-        }
-
-        // CAMADA DE AUTO-HEALING: Abre diálogo de impressão nativo do sistema formatado para 80mm
-        if (!sucessoImp) {
-            console.warn("[Emissão] Spooler de hardware offline. Executando plano de contingência nativo...");
-            executarImpressaoNativa(cleanNome, cleanEmpresa, cleanCargo);
-        }
-    }
-
-    function executarImpressaoNativa(nome, empresa, cargo) {
-        const antigo = document.getElementById('print-section');
-        if (antigo) antigo.remove();
-
-        const printDiv = document.createElement('div');
-        printDiv.id = 'print-section';
-        
-        printDiv.innerHTML = `
-            <div class="nome">${nome}</div>
-            ${empresa ? `<div class="empresa">${empresa}</div>` : ''}
-            ${cargo ? `<div class="cargo">${cargo}</div>` : ''}
-        `;
-        
-        document.body.appendChild(printDiv);
-        
-        // Pequena folga técnica para sincronia do parser HTML e disparar a janela de impressão
-        setTimeout(() => {
-            window.print();
-            setTimeout(() => {
-                if (printDiv) printDiv.remove();
-            }, 1000);
-        }, 150);
-    }
-
-
-    /* ========================================================
-       MÓDULO: EXPORTAÇÃO E MANUTENÇÃO DE SEGURANÇA LOCAL
+       SISTEMA DE EXPORTAÇÃO E MANUTENÇÃO DOS DADOS OFFLINE
        ======================================================== */
     function exportarDadosOffline() {
         const logs = JSON.parse(localStorage.getItem('offline_checkins')) || [];
         const cadastros = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
 
         if (logs.length === 0 && cadastros.length === 0) {
-            alert("Nenhum registro de contingência offline salvo localmente.");
+            alert("Nenhum dado offline registrado neste totem.");
             return;
         }
 
@@ -1478,7 +1371,7 @@
         
         const dataAtual = new Date().toISOString().slice(0, 10);
         link.setAttribute("href", url);
-        link.setAttribute("download", `contigencia_totem_${dataAtual}.csv`);
+        link.setAttribute("download", `dados_offline_totem_${dataAtual}.csv`);
         link.style.visibility = 'hidden';
         
         document.body.appendChild(link);
@@ -1496,18 +1389,49 @@
             return;
         }
 
-        if (confirm(`Deseja deletar PERMANENTEMENTE os ${total} registros de contingência locais do Totem?`)) {
+        if (confirm(`Deletar permanentemente as ${total} ações offline salvas localmente?`)) {
             localStorage.setItem('offline_checkins', '[]');
             localStorage.setItem('offline_cadastros', '[]');
             localStorage.setItem('PARTICIPANTES_CACHE', '[]');
-            alert("Dispositivo limpo!");
+            alert("Memória limpa com sucesso!");
         }
     }
 
-
     /* ========================================================
-       LOADING E INTERFACE LOCKS
+       MÓDULO DE IMPRESSÃO (POS80 / ZEBRA ZD220)
        ======================================================== */
+    function dispararImpressaoManual() {
+        if (dadosEtiquetaAtual.nome) {
+            imprimirEtiquetaPOS80(
+                dadosEtiquetaAtual.nome, 
+                dadosEtiquetaAtual.empresa, 
+                dadosEtiquetaAtual.cargo
+            );
+        }
+    }
+
+    function imprimirEtiquetaPOS80(nome, empresa, cargo) {
+        const antigo = document.getElementById('print-section');
+        if (antigo) antigo.remove();
+
+        const printDiv = document.createElement('div');
+        printDiv.id = 'print-section';
+        
+        printDiv.innerHTML = `
+            <div class="nome">${nome}</div>
+            ${empresa ? `<div class="empresa">${empresa}</div>` : ''}
+            ${cargo ? `<div class="cargo">${cargo}</div>` : ''}
+        `;
+        
+        document.body.appendChild(printDiv);
+
+        window.print();
+        
+        setTimeout(() => {
+            if (printDiv) printDiv.remove();
+        }, 1000);
+    }
+
     function toggleLoading(active, buttonId, text) {
         const btn = document.getElementById(buttonId);
         if(btn) {
@@ -1521,24 +1445,13 @@
     function destravarTela() {
         document.body.style.pointerEvents = 'auto';
         document.body.style.opacity = '1';
-        
-        const btnBuscar = document.getElementById('btn-buscar');
-        if (btnBuscar) {
-            btnBuscar.innerText = 'Buscar e Confirmar Presença';
-            btnBuscar.disabled = false;
-        }
-        const btnCadastrar = document.getElementById('btn-cadastrar');
-        if (btnCadastrar) {
-            btnCadastrar.innerText = 'Concluir Inscrição';
-            btnCadastrar.disabled = false;
-        }
         const inputCpf = document.getElementById('checkin-search');
         if (inputCpf) inputCpf.disabled = false;
     }
 
 
     /* ========================================================
-       GERENCIADOR DE SINCRONIZAÇÃO MANUAL DO ADMINISTRADOR
+       GERENCIADOR DE SINCRONIZAÇÃO VISUAL (ADMIN)
        ======================================================== */
     function atualizarProgressoSync(porcentagem, activeStepId, labelText, checkIconId = null, erro = false) {
         document.getElementById('sync-porcentagem').textContent = `${porcentagem}%`;
@@ -1559,7 +1472,7 @@
                 if (erro) {
                     iconEl.className = "fa-solid fa-triangle-exclamation text-red-500 animate-bounce";
                 } else {
-                    iconEl.className = "fa-solid fa-circle-check text-emerald-400";
+                    iconEl.className = "fa-solid fa-circle-check text-emerald-400 animate-scale";
                 }
             }
         }
@@ -1603,18 +1516,19 @@
         resetarUIEtapasSync();
         document.getElementById('sync-overlay').classList.remove('hidden');
 
-        // --- ETAPA 1: STATUS DE REDE ---
+        // --- ETAPA 1: VERIFICAR CONEXÃO DE REDE ---
         await new Promise(r => setTimeout(r, 800));
         if (!navigator.onLine) {
-            atualizarProgressoSync(15, 'step-net', 'Dispositivo sem conectividade física de rede!', 'icon-net', true);
-            ajustarBotaoFinalSync("Fechar (Modo Contingência)");
+            atualizarProgressoSync(15, 'step-net', 'Sem conexão com a Internet!', 'icon-net', true);
+            ajustarBotaoFinalSync("Sem Rede Física");
             return;
         }
-        atualizarProgressoSync(20, 'step-net', 'Rede de dados conectada!', 'icon-net');
+        atualizarProgressoSync(20, 'step-net', 'Conexão ativa!', 'icon-net');
 
-        // --- ETAPA 2: DOWNLOAD DO SHEETS (PULL) ---
+        // --- ETAPA 2: AUTO-PULL (BAIXAR PLANILHA COMPLETA) ---
         await new Promise(r => setTimeout(r, 600));
-        atualizarProgressoSync(25, 'step-pull', 'Iniciando download das tabelas centralizadas...');
+        atualizarProgressoSync(25, 'step-pull', 'Baixando dados do Sheets...');
+        
         try {
             const count = await new Promise((resolve, reject) => {
                 atualizarBancoLocalDoSheets(
@@ -1622,36 +1536,37 @@
                     (err) => reject(err)
                 );
             });
-            atualizarProgressoSync(50, 'step-pull', `Download concluído! (${count} pessoas salvas)`, 'icon-pull');
+            atualizarProgressoSync(50, 'step-pull', `Sucesso! Cache local: ${count} pessoas.`, 'icon-pull');
         } catch (e) {
-            atualizarProgressoSync(50, 'step-pull', 'Sem resposta do Sheets central.', 'icon-pull', true);
+            atualizarProgressoSync(50, 'step-pull', 'Falha ao sincronizar planilha.', 'icon-pull', true);
         }
 
-        // --- ETAPA 3: UPLOAD DE NOVOS CADASTROS OFFLINE ---
+        // --- ETAPA 3: AUTO-PUSH (CADASTROS OFFLINE) ---
         await new Promise(r => setTimeout(r, 600));
         const cadastros = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
         if (cadastros.length === 0) {
-            atualizarProgressoSync(75, 'step-push-cad', 'Não há cadastros locais pendentes.', 'icon-push-cad');
+            atualizarProgressoSync(75, 'step-push-cad', 'Sem novos cadastros pendentes.', 'icon-push-cad');
         } else {
-            atualizarProgressoSync(65, 'step-push-cad', `Subindo ${cadastros.length} novos cadastros locais...`);
+            atualizarProgressoSync(65, 'step-push-cad', `Subindo ${cadastros.length} novos cadastros...`);
             await processarFilaSincronizacaoCadastrosPromise();
-            atualizarProgressoSync(75, 'step-push-cad', `Tabela de novos cadastros sincronizada!`, 'icon-push-cad');
+            atualizarProgressoSync(75, 'step-push-cad', `Cadastros sincronizados no Sheets!`, 'icon-push-cad');
         }
 
-        // --- ETAPA 4: UPLOAD DE CHECK-INS ---
+        // --- ETAPA 4: AUTO-PUSH (CHECK-INS OFFLINE) ---
         await new Promise(r => setTimeout(r, 600));
         const checkins = JSON.parse(localStorage.getItem('offline_checkins')) || [];
         if (checkins.length === 0) {
-            atualizarProgressoSync(100, 'step-push-chk', 'Presença local em conformidade central!', 'icon-push-chk');
+            atualizarProgressoSync(100, 'step-push-chk', 'Check-ins sincronizados no Sheets!', 'icon-push-chk');
         } else {
-            atualizarProgressoSync(85, 'step-push-chk', `Sincronizando ${checkins.length} presenças locais...`);
+            atualizarProgressoSync(85, 'step-push-chk', `Sincronizando ${checkins.length} registros...`);
             await processarFilaSincronizacaoCheckinsPromise();
-            atualizarProgressoSync(100, 'step-push-chk', 'Todos os logs sincronizados com sucesso!', 'icon-push-chk');
+            atualizarProgressoSync(100, 'step-push-chk', 'Check-ins sincronizados no Sheets!', 'icon-push-chk');
         }
 
-        ajustarBotaoFinalSync("Operação Concluída");
+        ajustarBotaoFinalSync("Sincronização Concluída!");
     }
 
+    // CORRIGIDO: Agora usa o parâmetro correto 'mensagem' em vez do inexistente 'message'
     function ajustarBotaoFinalSync(mensagem) {
         const btnFechar = document.getElementById('btn-fechar-sync');
         if (btnFechar) {
@@ -1667,8 +1582,7 @@
             if (cadastros.length === 0) break;
             const cadastro = cadastros[0];
 
-            // CORREÇÃO: Resolução da Promise com retorno booleano para interromper em caso de falha de conexão física
-            const sucesso = await new Promise((resolve) => {
+            await new Promise((resolve) => {
                 const callbackNome = "jsonp_manual_cad_" + Math.round(100000 * Math.random());
                 window[callbackNome] = function() {
                     const fila = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
@@ -1677,24 +1591,14 @@
                     delete window[callbackNome];
                     const script = document.getElementById(callbackNome);
                     if (script) script.remove();
-                    resolve(true);
+                    resolve();
                 };
                 const script = document.createElement('script');
                 script.src = `${API_URL}?action=sincronizarCadastroOffline&nome=${encodeURIComponent(cadastro.nome)}&cpf=${encodeURIComponent(cadastro.cpf)}&email=${encodeURIComponent(cadastro.email)}&empresa=${encodeURIComponent(cadastro.empresa)}&cargo=${encodeURIComponent(cadastro.cargo)}&dataHora=${encodeURIComponent(cadastro.dataHora)}&callback=${callbackNome}`;
                 script.id = callbackNome;
-                script.onerror = () => { 
-                    delete window[callbackNome];
-                    const scriptEl = document.getElementById(callbackNome);
-                    if (scriptEl) scriptEl.remove();
-                    resolve(false); 
-                }; 
+                script.onerror = () => { resolve(); }; 
                 document.body.appendChild(script);
             });
-
-            if (!sucesso) {
-                console.warn("[Sync] Falha na rede física ao subir cadastros. Abortando loop.");
-                break; 
-            }
         }
     }
 
@@ -1704,8 +1608,7 @@
             if (checkins.length === 0) break;
             const checkin = checkins[0];
 
-            // CORREÇÃO: Resolução da Promise com retorno booleano para interromper em caso de falha de conexão física
-            const sucesso = await new Promise((resolve) => {
+            await new Promise((resolve) => {
                 const callbackNome = "jsonp_manual_chk_" + Math.round(100000 * Math.random());
                 window[callbackNome] = function() {
                     const fila = JSON.parse(localStorage.getItem('offline_checkins')) || [];
@@ -1714,90 +1617,21 @@
                     delete window[callbackNome];
                     const script = document.getElementById(callbackNome);
                     if (script) script.remove();
-                    resolve(true);
+                    resolve();
                 };
                 const script = document.createElement('script');
                 script.src = `${API_URL}?action=sincronizarCheckInOffline&cpf=${encodeURIComponent(checkin.cpf)}&dataHora=${encodeURIComponent(checkin.dataHora)}&callback=${callbackNome}`;
                 script.id = callbackNome;
-                script.onerror = () => { 
-                    delete window[callbackNome];
-                    const scriptEl = document.getElementById(callbackNome);
-                    if (scriptEl) scriptEl.remove();
-                    resolve(false); 
-                };
+                script.onerror = () => { resolve(); };
                 document.body.appendChild(script);
             });
-
-            if (!sucesso) {
-                console.warn("[Sync] Falha na rede física ao subir presenças. Abortando loop.");
-                break; 
-            }
         }
     }
 
+    if (navigator.onLine) {
+        atualizarBancoLocalDoSheets(); 
+    }
 
-    /* ========================================================
-       DISPARADORES DE STARTUP DA APLICAÇÃO (CONEXÃO E REDE)
-       ======================================================== */
-    document.addEventListener("DOMContentLoaded", () => {
-        console.log("Totem Infinity inicializado!");
-        
-        // Evento de máscara de digitação de CPF
-        const inputSearch = document.getElementById('checkin-search');
-        if (inputSearch) {
-            inputSearch.addEventListener('input', e => {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length > 11) value = value.slice(0, 11);
-                
-                if (value.length === 11) {
-                    e.target.blur(); 
-                    buscarEConfirmar();
-                }
-
-                if (value.length > 9) {
-                    value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, "$1.$2.$3-$4");
-                } else if (value.length > 6) {
-                    value = value.replace(/^(\d{3})(\d{3})(\d{1,3})$/, "$1.$2.$3");
-                } else if (value.length > 3) {
-                    value = value.replace(/^(\d{3})(\d{1,3})$/, "$1.$2");
-                }
-                e.target.value = value;
-            });
-        }
-
-        const inputCadCpf = document.getElementById('cad-cpf');
-        if (inputCadCpf) {
-            inputCadCpf.addEventListener('input', e => {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length > 11) value = value.slice(0, 11);
-                e.target.value = value;
-            });
-        }
-
-        const pinInputEl = document.getElementById('admin-pin-input');
-        if (pinInputEl) {
-            pinInputEl.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    validarPinAdmin();
-                }
-            });
-        }
-
-        // Puxa o cache mais atualizado ao iniciar
-        atualizarBancoLocalDoSheets();
-
-        // Inicializa fila offline em segundo plano após 3 segundos
-        setTimeout(sincronizarFilaParaOSheets, 3000);
-    });
-
-    // Detecta retorno de internet física do totem e limpa a fila de dados
-    window.addEventListener('online', () => {
-        console.log("⚡ [Rede] Conexão física de internet restaurada!");
-        sincronizarFilaParaOSheets();
-        atualizarBancoLocalDoSheets();
-    });
-
-    // Rotinas cron automáticas em segundo plano
     setInterval(sincronizarFilaParaOSheets, INTERVALO_SYNC_UP);   
     setInterval(atualizarBancoLocalDoSheets, INTERVALO_SYNC_DOWN); 
     </script>
