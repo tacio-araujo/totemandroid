@@ -120,7 +120,7 @@
             }
             
             @page {
-                size: 80mm auto !important; /* CORRIGIDO: Retrato em vez de paisagem para evitar bug de rotação e escala */
+                size: 80mm auto !important; /* Retrato em vez de paisagem para evitar bug de rotação e escala */
                 margin: 0 !important;
             }
 
@@ -141,7 +141,7 @@
                 
                 width: 80mm !important;
                 margin: 0 !important;
-                padding: 8mm 6mm !important; 
+                padding: 10mm 4mm !important; 
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
@@ -151,39 +151,39 @@
             }
 
             #print-section .nome {
-                font-size: 20pt !important; /* Aumentado para melhor legibilidade */
+                font-size: 38pt !important; /* Otimizado para máxima visualização na bobina de 80mm */
                 font-weight: 800 !important;
                 text-transform: uppercase !important;
-                margin-top: 2mm !important;
-                margin-bottom: 3mm !important;
+                margin-top: 3mm !important;
+                margin-bottom: 4mm !important;
                 width: 100% !important;
                 white-space: normal !important; /* Permite quebra de linha se o nome for longo */
                 word-wrap: break-word !important;
                 color: #000000 !important;
-                line-height: 1.2 !important;
+                line-height: 1.1 !important;
             }
 
             #print-section .empresa {
-                font-size: 13pt !important; /* Aumentado */
+                font-size: 26pt !important; /* Otimizado para legibilidade sob distância de crachá */
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
-                margin-bottom: 2mm !important;
+                margin-bottom: 3mm !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
                 color: #111111 !important;
-                line-height: 1.2 !important;
+                line-height: 1.1 !important;
             }
 
             #print-section .cargo {
-                font-size: 11pt !important; /* Aumentado */
+                font-size: 20pt !important; /* Tamanho ajustado e proporcional */
                 font-weight: 400 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
                 white-space: normal !important;
                 word-wrap: break-word !important;
                 color: #333333 !important;
-                line-height: 1.2 !important;
+                line-height: 1.1 !important;
             }
         }
     </style>
@@ -1318,7 +1318,7 @@
             labelContador.textContent = tempoRestante;
         }
 
-        // NOVIDADE: Dispara a impressão SILENCIOSA AUTOMATICAMENTE assim que entra na tela de sucesso!
+        // Dispara a impressão silenciosa automaticamente ao concluir o check-in!
         setTimeout(() => {
             dispararImpressaoManual();
         }, 500);
@@ -1398,7 +1398,7 @@
     }
 
     /* ========================================================
-       MÓDULO DE IMPRESSÃO (AUTO-HEALING INTELIGENTE)
+       MÓDULO DE IMPRESSÃO (AUTO-HEALING INTELIGENTE E RESILIENTE)
        ======================================================== */
     function dispararImpressaoManual() {
         if (dadosEtiquetaAtual.nome) {
@@ -1410,8 +1410,7 @@
         }
     }
 
-    // MODIFICADO: Função com cascata de conexão para vencer bloqueios CORS/HTTPS no Firefox
-        // Função com cascata de conexão corrigida e depuração ativa
+    // MODIFICADO: Chamadas de rede sem no-cors para evitar falhas silenciosas, com Timeout de 2s e Fallback nativo imediato
     async function imprimirEtiquetaPOS80(nome, empresa, cargo) {
         const payload = {
             content: [
@@ -1427,52 +1426,59 @@
 
         const rawBody = JSON.stringify(payload);
 
-        // Rotas de tentativa sem o "no-cors" para podermos capturar a falha real
+        // Rotas de tentativa local
         const rotas = [
             { url: "http://127.0.0.1:9100/print", label: "Loopback (127.0.0.1)" },
             { url: "http://localhost:9100/print", label: "Localhost" }
         ];
 
-        console.log("[Impressão] Iniciando disparos de comunicação...");
+        console.log("[Impressão] Iniciando comunicação direta com o Cleanter...");
         let errosAcumulados = [];
+        let sucessoCleanter = false;
 
         for (let i = 0; i < rotas.length; i++) {
             try {
-                console.log(`[Impressão] Tentando rota: ${rotas[i].label}`);
+                console.log(`[Impressão] Conectando a: ${rotas[i].label}`);
                 
+                // Força um timeout curto para evitar travar a resposta do Totem
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+
                 const response = await fetch(rotas[i].url, {
                     method: "POST",
+                    mode: "cors", // Permitindo captura real de respostas e evitando bloqueios silenciosos
                     headers: { "Content-Type": "application/json" },
-                    body: rawBody
+                    body: rawBody,
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
+
                 if (response.ok) {
-                    console.log("[Impressão] Sucesso via Cleanter!");
-                    return; // Imprimiu com sucesso silencioso, sai da função
+                    console.log("[Impressão] Sucesso na emissão silenciosa via API!");
+                    sucessoCleanter = true;
+                    break; 
                 } else {
-                    errosAcumulados.push(`${rotas[i].label}: Status ${response.status}`);
+                    errosAcumulados.push(`${rotas[i].label}: Código HTTP ${response.status}`);
                 }
             } catch (err) {
-                errosAcumulados.push(`${rotas[i].label}: ${err.message}`);
+                errosAcumulados.push(`${rotas[i].label}: ${err.name === 'AbortError' ? 'Estouro de Timeout (2s)' : err.message}`);
             }
         }
 
-        // Se chegou aqui, as comunicações com o Cleanter falharam
-        console.warn("[Impressão] Comunicação direta indisponível:", errosAcumulados);
-        
-        // Alerta informativo de debug na tela para ajudar você a entender o bloqueio do Firefox
-        alert(
-            "⚠️ COMUNICAÇÃO SILENCIOSA FALHOU!\n\n" +
-            "Motivos:\n" + errosAcumulados.join("\n") + "\n\n" +
-            "O Totem usará a impressão padrão do sistema agora."
-        );
+        if (sucessoCleanter) {
+            return; // Impressão concluída com sucesso via API local, finaliza.
+        }
 
-        // Dispara o fallback nativo (que agora está calibrado em modo Retrato/Grande no CSS)
+        // Auto-healing ativado caso as tentativas silenciosas falhem por CORS ou serviço offline
+        console.warn("[Impressão] Conexão Cleanter indisponível. Detalhes:", errosAcumulados);
+        console.log("[Impressão] Direcionando para impressão nativa via sistema...");
+        
         executarImpressaoNativa(nome, empresa, cargo);
     }
 
 
-    function executarImpressaoNativa(nome, empresa, cargo) {
+    function ejecutarImpressaoNativa(nome, empresa, cargo) {
         const antigo = document.getElementById('print-section');
         if (antigo) antigo.remove();
 
@@ -1632,7 +1638,7 @@
         const btnFechar = document.getElementById('btn-fechar-sync');
         if (btnFechar) {
             btnFechar.disabled = false;
-            btnFechar.innerText = message; 
+            btnFechar.innerText = mensagem; 
             btnFechar.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl text-sm font-extrabold transition-all cursor-pointer shadow-lg";
         }
     }
