@@ -149,7 +149,14 @@
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
                 color: #000000 !important;
-            }
+                /* 1. AJUSTE AS MARGENS INTERNAS AQUI: */
+                padding-top: 10px !important;
+                padding-left: 15px !important;
+                padding-right: 15px !important;
+        
+                    /* 2. ESTE É O SEGREDO: Aumente este valor para a etiqueta avançar mais */
+                padding-bottom: 35mm !important; /* Teste com 30mm, 35mm ou 40mm até chegar
+                }
 
             /* AJUSTE OS TAMANHOS DE FONTE AQUI: */
             #print-section .nome {
@@ -166,7 +173,7 @@
             }
 
             #print-section .empresa {
-                font-size: 26pt !important; /* Aumentamos para 16pt (o anterior era 12pt) */
+                font-size: 36pt !important; /* Aumentamos para 16pt (o anterior era 12pt) */
                 font-weight: 700 !important;
                 text-transform: uppercase !important;
                 margin-bottom: 3px !important;
@@ -175,7 +182,7 @@
             }
 
             #print-section .cargo {
-                font-size: 20pt !important; /* Aumentamos para 12pt (o anterior era 10pt) */
+                font-size: 32pt !important; /* Aumentamos para 12pt (o anterior era 10pt) */
                 font-weight: 500 !important;
                 text-transform: uppercase !important;
                 width: 100% !important;
