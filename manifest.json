@@ -1,0 +1,16 @@
+{
+  "name": "InfinityCorp Totem",
+  "short_name": "InfinityCorp",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b111e",
+  "theme_color": "#0b111e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>InfinityCorp - Totem Experiência</title>
+    
+    <!-- Link para o Manifesto do Aplicativo -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b111e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Biblioteca de Leitura de QR Code via Câmera -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <!-- Banco de dados local de contingência para operação offline -->
+    <script src="database.js" onerror="console.warn('database.js não foi localizado. O totem funcionará apenas com conexão online.')"></script>
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .bg-premium {
+            background: radial-gradient(circle at 10% 20%, rgba(0, 150, 214, 0.15) 0%, transparent 45%), 
+                        radial-gradient(circle at 90% 80%, rgba(240, 108, 32, 0.1) 0%, transparent 45%), 
+                        #0b111e;
+        }
+
+        /* Efeito de linha laser piscando/movendo no leitor de QR Code */
+        .scanner-laser {
+            width: 100%;
+            height: 3px;
+            background-color: #0096d6;
+            box-shadow: 0px 0px 15px 3px rgba(0, 150, 214, 0.8);
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: laser-anim 2s infinite linear;
+        }
+
+        @keyframes laser-anim {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        #qr-reader img {
+            display: none !important;
+        }
+        #qr-reader button {
+            background-color: #0096d6 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px !important;
+            border-radius: 8px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            margin-top: 10px !important;
+        }
+
+        /* Overlay para indicar leitura do leitor físico embutido */
+        #physical-scan-overlay, #sync-overlay, #admin-auth-modal {
+            background: rgba(11, 17, 30, 0.96);
+            backdrop-filter: blur(10px);
+        }
+
+        /* ==========================================
+           NOVAS ANIMAÇÕES EXCLUSIVAS PARA O TOTEM
+           ========================================== */
+        
+        /* Brilho Neon Pulsante para o "É HOJE!!!" (Alterna entre Laranja e Azul) */
+        @keyframes neon-pulse {
+            0%, 100% {
+                text-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 15px #f06c20, 0 0 30px #f06c20;
+                color: #ffffff;
+                transform: scale(1);
+            }
+            50% {
+                text-shadow: 0 0 12px rgba(255, 255, 255, 0.8), 0 0 20px #0096d6, 0 0 45px #0096d6;
+                color: #0096d6;
+                transform: scale(1.02);
+            }
+        }
+        .animate-neon-today {
+            animation: neon-pulse 3s infinite ease-in-out;
+            display: inline-block;
+        }
+
+        /* Animação do fluxo de dados nos "cabos virtuais" */
+        @keyframes flow-left-to-right {
+            0% { transform: translateX(-150%); }
+            100% { transform: translateX(150%); }
+        }
+        .animate-flow-left {
+            animation: flow-left-to-right 2s infinite linear;
+        }
+        .animate-flow-right {
+            animation: flow-left-to-right 2s infinite linear;
+            animation-delay: 1s;
+        }
+
+        /* ==========================================
+           REGRAS CRÍTICAS PARA IMPRESSÃO NATIVA (POS80 / ZEBRA ZD220)
+           ========================================== */
+        #print-section {
+            display: none; 
+        }
+
+        @media print {
+            body > *:not(#print-section) {
+                display: none !important;
+            }
+            
+            @page {
+                size: 80mm auto !important; /* CORRIGIDO: Retrato em vez de paisagem para evitar bug de rotação e escala */
+                margin: 0 !important;
+            }
+
+            html, body {
+                width: 80mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+
+            #print-section {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important; 
+                align-items: center !important;
+                text-align: center !important;
+                
+                width: 80mm !important;
+                margin: 0 !important;
+                padding: 8mm 6mm !important; 
+                box-sizing: border-box !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            #print-section .nome {
+                font-size: 20pt !important; /* Aumentado para melhor legibilidade */
+                font-weight: 800 !important;
+                text-transform: uppercase !important;
+                margin-top: 2mm !important;
+                margin-bottom: 3mm !important;
+                width: 100% !important;
+                white-space: normal !important; /* Permite quebra de linha se o nome for longo */
+                word-wrap: break-word !important;
+                color: #000000 !important;
+                line-height: 1.2 !important;
+            }
+
+            #print-section .empresa {
+                font-size: 13pt !important; /* Aumentado */
+                font-weight: 700 !important;
+                text-transform: uppercase !important;
+                margin-bottom: 2mm !important;
+                width: 100% !important;
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                color: #111111 !important;
+                line-height: 1.2 !important;
+            }
+
+            #print-section .cargo {
+                font-size: 11pt !important; /* Aumentado */
+                font-weight: 400 !important;
+                text-transform: uppercase !important;
+                width: 100% !important;
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                color: #333333 !important;
+                line-height: 1.2 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-premium text-slate-100 h-[100dvh] flex flex-col justify-between p-4 md:p-8 select-none overflow-hidden">
+
+    <!-- OVERLAY DINÂMICO DE LEITURA (Logs de status em tempo real) -->
+    <div id="physical-scan-overlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center space-y-8 hidden">
+        <div id="scan-icon-wrapper" class="h-24 w-24 bg-sky-500/10 border-2 border-[#0096d6] text-[#0096d6] rounded-full flex items-center justify-center text-4xl animate-pulse transition-all duration-300">
+            <i id="scan-icon" class="fa-solid fa-barcode"></i>
+        </div>
+        <div class="text-center space-y-3 max-w-md px-6">
+            <h3 id="scan-title" class="text-3xl font-extrabold text-white tracking-wide">Leitura Efetuada</h3>
+            <p id="scan-status" class="text-slate-400 text-sm font-medium leading-relaxed">Código capturado! Identificando formato...</p>
+        </div>
+        <!-- Barra de progresso discreta -->
+        <div class="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-[#0096d6] to-[#f06c20] rounded-full" style="width: 100%; animation: pulse 2s infinite;"></div>
+        </div>
+    </div>
+
+    <!-- OVERLAY EXCLUSIVO PARA PROGRESSO DE SINCRONIZAÇÃO (ADMIN) -->
+    <div id="sync-overlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center hidden px-6">
+        <div class="w-full max-w-xl bg-slate-900 border border-slate-800/80 rounded-3xl p-8 shadow-2xl space-y-6 text-center">
+            <div class="flex items-center justify-center gap-3">
+                <i class="fa-solid fa-arrows-rotate text-3xl text-[#0096d6] animate-spin"></i>
+                <h3 class="text-2xl font-extrabold text-white">Sincronizador Infinity</h3>
+            </div>
+            
+            <!-- Barra de Progresso Real -->
+            <div class="space-y-2">
+                <div class="flex justify-between text-xs font-semibold text-slate-400">
+                    <span>PROGRESSO GERAL</span>
+                    <span id="sync-porcentagem">0%</span>
+                </div>
+                <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-850">
+                    <div id="sync-progressbar" class="h-full bg-gradient-to-r from-[#0096d6] to-[#f06c20] rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Etapas de Conexão -->
+            <div class="text-left bg-slate-950/80 rounded-2xl p-5 border border-slate-850/80 font-mono text-xs space-y-3.5 max-h-60 overflow-y-auto">
+                <div id="step-net" class="flex items-center gap-3 text-slate-500">
+                    <i id="icon-net" class="fa-regular fa-circle"></i>
+                    <span id="txt-net">Verificando status de rede...</span>
+                </div>
+                <div id="step-pull" class="flex items-center gap-3 text-slate-500">
+                    <i id="icon-pull" class="fa-regular fa-circle"></i>
+                    <span id="txt-pull">Aguardando download de participantes do Sheets...</span>
+                </div>
+                <div id="step-push-cad" class="flex items-center gap-3 text-slate-500">
+                    <i id="icon-push-cad" class="fa-regular fa-circle"></i>
+                    <span id="txt-push-cad">Aguardando envio de novos cadastros offline...</span>
+                </div>
+                <div id="step-push-chk" class="flex items-center gap-3 text-slate-500">
+                    <i id="icon-push-chk" class="fa-regular fa-circle"></i>
+                    <span id="txt-push-chk">Aguardando envio de check-ins offline...</span>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button id="btn-fechar-sync" onclick="fecharOverlaySync()" disabled class="w-full bg-slate-850 hover:bg-slate-800 disabled:opacity-50 py-4 rounded-xl text-sm font-bold text-slate-400 transition-all cursor-not-allowed">
+                    Aguardando Conclusão...
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cabeçalho Principal Ultra Flexível e Compactado -->
+    <header class="text-center py-1 flex flex-col items-center gap-1 shrink-0">
+        <div class="flex items-center justify-center gap-3">
+            <img src="logo.png" alt="Infinity Corp Logo" class="h-[7vh] max-h-[70px] object-contain" onerror="this.style.display='none'">
+            <div class="text-left">
+                <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight leading-none">
+                    <span class="text-white">INFINITY</span><span class="text-[#0096d6]">CORP</span>
+                </h1>
+                <p class="text-slate-400 text-[9px] tracking-[0.3em] uppercase font-black">
+                    APRESENTA
+                </p>
+            </div>
+        </div>
+        
+        <div class="w-full max-w-xs border-t border-slate-800/40 my-0.5"></div>
+
+        <h2 class="text-lg md:text-2xl font-extrabold text-white tracking-wide leading-none">
+            1º - Café com Conexão
+        </h2>
+
+        <div class="inline-flex items-center gap-1.5 bg-orange-500/10 border border-[#f06c20]/30 px-3 py-1 rounded-full backdrop-blur-sm">
+            <span class="flex items-center gap-1.5 text-xs font-black text-[#f06c20] tracking-wider">
+                <i class="fa-regular fa-calendar-days text-xs"></i> 25/08/2026
+            </span>
+        </div>
+
+        <p class="font-black tracking-[0.2em] text-[20px] uppercase animate-neon-today">
+            É hoje!!!
+        </p>
+    </header>
+
+    <!-- Área de Conteúdo Central -->
+    <main class="flex-grow flex items-center justify-center max-w-5xl mx-auto w-full py-3 overflow-hidden">
+        
+        <!-- TELA 1: Boas-vindas (Home com 3 Opções) -->
+        <div id="screen-home" class="w-full text-center space-y-6 transition-all duration-300">
+            
+            <!-- SISTEMA DE REDE DINÂMICO COMPACTADO PARA PORTRAIT -->
+            <div class="flex items-center justify-center gap-4 py-2 relative select-none">
+                <!-- Nó Esquerdo -->
+                <div class="h-14 w-14 rounded-full bg-sky-500/10 border border-[#0096d6]/40 flex items-center justify-center text-[#0096d6] text-xl shadow-md animate-bounce" style="animation-duration: 3s;">
+                    <i class="fa-solid fa-laptop"></i>
+                </div>
+                
+                <!-- Link de Comunicação 1 -->
+                <div class="flex flex-col items-center justify-center">
+                    <span class="text-[8px] text-sky-400 font-bold tracking-widest scale-90">CONECTANDO</span>
+                    <div class="flex items-center gap-1">
+                        <span class="w-1 h-1 rounded-full bg-[#0096d6] animate-ping"></span>
+                        <div class="w-8 h-[1.5px] bg-gradient-to-r from-[#0096d6] to-[#f06c20]/60 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-white w-3 h-full animate-flow-left"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nó Central -->
+                <div class="h-18 w-18 rounded-full bg-gradient-to-br from-[#0096d6]/20 to-[#f06c20]/20 border border-white/40 flex items-center justify-center text-white text-3xl shadow-xl animate-pulse relative">
+                    <i class="fa-solid fa-circle-nodes text-[#0096d6] animate-spin" style="animation-duration: 12s;"></i>
+                    <div class="absolute inset-0 rounded-full border border-[#f06c20]/50 animate-ping" style="animation-duration: 2.5s;"></div>
+                </div>
+
+                <!-- Link de Comunicação 2 -->
+                <div class="flex flex-col items-center justify-center">
+                    <span class="text-[8px] text-orange-400 font-bold tracking-widest scale-90">EMISSÃO</span>
+                    <div class="flex items-center gap-1">
+                        <div class="w-8 h-[1.5px] bg-gradient-to-r from-[#0096d6]/60 to-[#f06c20] relative overflow-hidden">
+                            <div class="absolute inset-0 bg-white w-3 h-full animate-flow-right"></div>
+                        </div>
+                        <span class="w-1 h-1 rounded-full bg-[#f06c20] animate-ping" style="animation-delay: 0.5s;"></span>
+                    </div>
+                </div>
+
+                <!-- Nó Direito -->
+                <div class="h-14 w-14 rounded-full bg-orange-500/10 border border-[#f06c20]/40 flex items-center justify-center text-[#f06c20] text-xl shadow-md animate-bounce" style="animation-duration: 3s; animation-delay: 1.5s;">
+                    <i class="fa-solid fa-print"></i>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white">Olá, seja bem-vindo!</h2>
+                <p class="text-slate-400 text-sm md:text-base">Selecione ou aproxime seu QR Code abaixo:</p>
+            </div>
+
+            <!-- GRID AJUSTADA PARA MAIOR COMPACTAÇÃO VERTICAL -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mx-auto px-2">
+                <!-- QR CODE (Câmera do Totem) -->
+                <button onclick="changeScreen('screen-qrcode')" class="p-5 md:p-6 bg-slate-900/80 border border-[#0096d6] hover:border-[#0096d6]/80 rounded-2xl text-left transition-all duration-350 transform hover:-translate-y-0.5 active:scale-98 group shadow-lg shadow-sky-950/40">
+                    <div class="h-10 w-10 bg-[#0096d6]/20 rounded-xl flex items-center justify-center text-[#0096d6] text-xl font-extrabold mb-3 group-hover:bg-[#0096d6] group-hover:text-white transition-all">
+                        <i class="fa-solid fa-camera"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-1">Usar Câmera</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed font-semibold text-sky-400/80">Totem com webcam frontal.</p>
+                </button>
+
+                <!-- BUSCA POR CPF -->
+                <button onclick="changeScreen('screen-checkin')" class="p-5 md:p-6 bg-slate-900/60 border border-slate-800 hover:border-[#0096d6]/40 rounded-2xl text-left transition-all duration-350 transform hover:-translate-y-0.5 active:scale-98 group shadow-lg">
+                    <div class="h-10 w-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 text-xl font-extrabold mb-3 group-hover:bg-slate-700 group-hover:text-white transition-all">
+                        <i class="fa-solid fa-keyboard"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-1">Digitar CPF</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">Não tenho QR Code ou prefiro digitar.</p>
+                </button>
+
+                <!-- CADASTRO NA HORA -->
+                <button onclick="changeScreen('screen-cadastro')" class="p-5 md:p-6 bg-slate-900/60 border border-[#f06c20]/20 hover:border-[#f06c20]/60 rounded-2xl text-left transition-all duration-350 transform hover:-translate-y-0.5 active:scale-98 group shadow-lg">
+                    <div class="h-10 w-10 bg-[#f06c20]/10 rounded-xl flex items-center justify-center text-[#f06c20] text-xl font-extrabold mb-3 group-hover:bg-[#f06c20] group-hover:text-white transition-all">+</div>
+                    <h3 class="text-lg font-bold mb-1">Me Cadastrar</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">Criar novo registro agora.</p>
+                </button>
+            </div>
+        </div>
+
+        <!-- TELA DE LEITURA DO QR CODE (Câmera) -->
+        <div id="screen-qrcode" class="w-full max-w-sm bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-md hidden shadow-2xl text-center space-y-4">
+            <div>
+                <h3 class="text-xl font-bold">Aponte seu QR Code</h3>
+                <p class="text-slate-400 text-xs mt-0.5">Posicione o código em frente à câmera do totem.</p>
+            </div>
+
+            <div class="relative w-full max-w-[240px] mx-auto aspect-square rounded-xl overflow-hidden border-2 border-[#0096d6]/40 bg-black">
+                <div id="qr-reader" class="w-full h-full"></div>
+                <div class="scanner-laser"></div>
+            </div>
+
+            <div class="space-y-3">
+                <div id="qr-status" class="text-xs font-semibold text-slate-400">Aguardando detecção...</div>
+                <button onclick="backToHome()" class="w-full bg-slate-800 hover:bg-slate-700 py-3 rounded-xl text-xs font-semibold text-white transition-all">
+                    Voltar ao Início
+                </button>
+            </div>
+        </div>
+
+        <!-- TELA 2: Busca por CPF -->
+        <div id="screen-checkin" class="w-full max-w-sm bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-md hidden shadow-2xl">
+            <h3 class="text-xl font-bold text-center mb-1">Identifique-se</h3>
+            <p class="text-slate-400 text-center text-xs mb-4">Digite seu CPF cadastrado.</p>
+            
+            <div class="space-y-3">
+                <input type="tel" id="checkin-search" placeholder="000.000.000-00" maxlength="14" class="w-full text-center text-lg p-4 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#0096d6] font-semibold tracking-wide transition-all placeholder:text-slate-600">
+                
+                <button id="btn-buscar" onclick="buscarEConfirmar()" class="w-full bg-gradient-to-r from-[#0096d6] to-[#007cb3] hover:from-[#007cb3] hover:to-[#005f8a] py-4 rounded-xl text-base font-bold transition-all active:scale-95 shadow-lg shadow-sky-900/20">
+                    Buscar e Confirmar Presença
+                </button>
+                
+                <button id="btn-voltar-checkin" onclick="backToHome()" class="w-full bg-transparent hover:bg-slate-800 py-3 rounded-xl text-xs font-semibold text-slate-400 transition-all">
+                    Voltar ao Início
+                </button>
+            </div>
+        </div>
+
+        <!-- TELA 3: Formulário de Cadastro -->
+        <div id="screen-cadastro" class="w-full max-w-sm bg-slate-900/80 border border-slate-800 rounded-2xl p-6 backdrop-blur-md hidden shadow-2xl">
+            <h3 class="text-xl font-bold text-center mb-1">Formulário de Inscrição</h3>
+            <p class="text-slate-400 text-center text-xs mb-4">Insira seus dados corretos.</p>
+            
+            <form id="form-cadastro" onsubmit="cadastrarEConfirmar(event)" class="space-y-3">
+                <input type="text" id="cad-nome" placeholder="Nome Completo" required class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#f06c20] text-sm transition-all">
+                <input type="text" id="cad-cpf" placeholder="CPF (Somente números)" required class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#f06c20] text-sm transition-all">
+                <input type="email" id="cad-email" placeholder="E-mail" required class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#f06c20] text-sm transition-all">
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="cad-empresa" placeholder="Empresa" class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#f06c20] text-sm transition-all">
+                    <input type="text" id="cad-cargo" placeholder="Cargo" class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-[#f06c20] text-sm transition-all">
+                </div>
+                
+                <button type="submit" id="btn-cadastrar" class="w-full bg-gradient-to-r from-[#f06c20] to-[#d6550f] hover:from-[#d6550f] hover:to-[#b34005] py-4 rounded-xl text-base font-bold transition-all active:scale-95 mt-2 shadow-lg shadow-orange-900/20">
+                    Concluir Inscrição
+                </button>
+                
+                <button type="button" id="btn-cancelar-cad" onclick="backToHome()" class="w-full bg-transparent hover:bg-slate-800 py-2 rounded-lg text-xs font-semibold text-slate-400 transition-all">
+                    Cancelar e Voltar
+                </button>
+            </form>
+        </div>
+
+        <!-- TELA 4: Tela de Sucesso -->
+        <div id="screen-sucesso" class="w-full max-w-sm text-center space-y-4 hidden">
+            <div class="h-16 w-16 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto animate-bounce shadow-lg shadow-emerald-950/20">✓</div>
+            
+            <div class="space-y-1">
+                <h2 class="text-2xl font-extrabold text-emerald-400">Check-in Confirmado!</h2>
+                <p class="text-slate-400 text-xs">Sua presença foi computada com sucesso.</p>
+            </div>
+
+            <div class="bg-gradient-to-b from-slate-900 to-slate-950 p-6 rounded-2xl border border-slate-800/80 shadow-2xl space-y-3">
+                <div>
+                    <p class="text-[10px] text-slate-500 uppercase tracking-widest">Participante</p>
+                    <p class="text-xl font-extrabold text-white mt-0.5" id="lbl-nome-sucesso">---</p>
+                </div>
+                <div id="lbl-empresa-box" class="border-t border-slate-800/80 pt-3">
+                    <p class="text-[10px] text-slate-500 uppercase tracking-widest">Empresa / Cargo</p>
+                    <p class="text-base font-semibold text-[#0096d6] mt-0.5" id="lbl-empresa-sucesso">---</p>
+                </div>
+            </div>
+
+            <div class="pt-1">
+                <button id="btn-imprimir-credencial" onclick="dispararImpressaoManual()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 py-4 rounded-xl text-lg font-bold transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-print"></i> IMPRIMIR CREDENCIAL
+                </button>
+            </div>
+            
+            <p id="lbl-contador" class="text-slate-500 text-[10px] tracking-widest">Retornando à tela inicial em <span id="contador-regressivo">15</span> s...</p>
+        </div>
+
+    </main>
+
+    <!-- Rodapé Compacto -->
+    <footer class="text-center py-2 text-[10px] text-slate-600 tracking-wider">
+        <div>INFINITYCORP &copy; 2026 • CHECK-IN AUTOATENDIMENTO</div>
+    </footer>
+
+
+    <!-- ========================================================
+       PAINEL ADMINISTRATIVO SUPER DISCRETO (ENGRENAGEM FANTASMA)
+       ======================================================== -->
+    
+    <!-- Botão de Ativação do Menu (Fundo Direito) -->
+    <button id="admin-gear-btn" onclick="abrirAdminAuthModal()" 
+            class="fixed bottom-3 right-3 z-50 text-slate-700 hover:text-slate-300 opacity-15 hover:opacity-100 transition-all duration-300 p-2 rounded-full hover:bg-slate-900 border border-transparent hover:border-slate-800 cursor-pointer">
+        <i class="fa-solid fa-gear text-xl"></i>
+    </button>
+
+    <!-- MODAL DE AUTENTICAÇÃO DO PIN -->
+    <div id="admin-auth-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden px-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl text-center space-y-4">
+            <div class="h-12 w-12 bg-amber-500/10 border border-amber-500/30 text-amber-500 rounded-full flex items-center justify-center text-xl mx-auto">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h4 class="text-lg font-bold text-white">Acesso Restrito</h4>
+                <p class="text-xs text-slate-400 mt-1">Digite o PIN do Administrador</p>
+            </div>
+            
+            <input type="password" id="admin-pin-input" placeholder="••••" maxlength="8" 
+                   class="w-full text-center text-2xl p-3 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-amber-500 font-mono tracking-widest transition-all">
+            
+            <div class="flex gap-2">
+                <button onclick="fecharAdminAuthModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl text-xs font-semibold text-slate-300 transition-all cursor-pointer">
+                    Cancelar
+                </button>
+                <button onclick="validarPinAdmin()" class="w-1/2 bg-amber-500 hover:bg-amber-600 py-3 rounded-xl text-xs font-bold text-slate-950 transition-all cursor-pointer">
+                    Acessar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Flutuante de Configurações Técnicas -->
+    <div id="admin-menu-panel" 
+         class="fixed bottom-14 right-3 z-50 w-64 bg-slate-950/95 border border-slate-800/80 rounded-2xl p-4 shadow-2xl backdrop-blur-md hidden flex flex-col gap-1.5 transition-all duration-200">
+        
+        <div class="text-xs font-bold text-slate-500 tracking-wider uppercase mb-2 px-2 border-b border-slate-800/80 pb-2 flex justify-between items-center">
+            <span>PAINEL ADMIN</span>
+            <span class="text-[9px] text-[#0096d6] font-mono">v1.4.secured</span>
+        </div>
+
+        <!-- NOVIDADE: OPÇÃO 0: Alternar Modo Tela Cheia (Firefox Kiosk) -->
+        <button onclick="alternarTelaCheia(); fecharAdminMenu();" 
+                class="flex items-center gap-3 w-full px-3 py-2.5 bg-[#0096d6]/10 text-[#0096d6] hover:bg-[#0096d6]/20 rounded-xl text-left text-xs font-bold tracking-wide transition-all cursor-pointer">
+            <i class="fa-solid fa-expand text-sm"></i> Ativar Tela Cheia
+        </button>
+        
+        <!-- OPÇÃO 1: Sincronização e Carga Manual -->
+        <button onclick="iniciarSincronizacaoManual(); fecharAdminMenu();" 
+                class="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-sky-500/10 text-sky-400 hover:text-sky-300 rounded-xl text-left text-xs font-bold tracking-wide transition-all cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate text-sm"></i> Sincronizar Agora
+        </button>
+        
+        <!-- OPÇÃO 2: Backup Físico -->
+        <button onclick="exportarDadosOffline(); fecharAdminMenu();" 
+                class="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-left text-xs font-bold tracking-wide transition-all cursor-pointer">
+            <i class="fa-solid fa-file-csv text-sm"></i> Exportar Offline (CSV)
+        </button>
+
+        <!-- OPÇÃO 3: Teste Silencioso de Impressora -->
+        <button onclick="imprimirEtiquetaPOS80('NOME TESTE SILENCIOSO', 'EMPRESA TESTE', 'CARGO TESTE'); fecharAdminMenu();" 
+                class="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-left text-xs font-bold tracking-wide transition-all cursor-pointer">
+            <i class="fa-solid fa-print text-sm"></i> Testar Impressora
+        </button>
+        
+        <!-- OPÇÃO 4: Wipeout de Dados (Perigo) -->
+        <button onclick="limparDadosOffline(); fecharAdminMenu();" 
+                class="flex items-center gap-3 w-full px-3 py-2.5 hover:bg-red-500/10 text-red-500/80 hover:text-red-400 rounded-xl text-left text-xs font-bold tracking-wide transition-all mt-1 border-t border-slate-900 pt-2.5 cursor-pointer">
+            <i class="fa-solid fa-trash-can text-sm"></i> Limpar Local (Reset)
+        </button>
+    </div>
+
+
+    <!-- SCRIPTS DE CONTROLE E INTEGRAÇÃO DE CONEXÃO E LEITURA -->
+    <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxo82LvC5Wkt7zbHCqv8m9oE4ipzoG9_x3Mt75l9gdpL4yVfbpwWju7nfw6aic6q1BB0Q/exec"; 
+    
+    // PIN do administrador para controle técnico local
+    const PIN_ADMINISTRADOR = "1234"; 
+
+    let countdownInterval;
+    let timeoutDeSeguranca = null; 
+    let checkinConcluidoComSucesso = false; 
+
+    // CONFIGURAÇÕES DO CRON DE SINCRONIZAÇÃO AUTOMÁTICA
+    const INTERVALO_SYNC_UP = 20000;    
+    const INTERVALO_SYNC_DOWN = 300000; 
+    let isSyncing = false;               
+
+    // Inicialização das tabelas de armazenamento local
+    if (!localStorage.getItem('offline_checkins')) localStorage.setItem('offline_checkins', JSON.stringify([]));
+    if (!localStorage.getItem('offline_cadastros')) localStorage.setItem('offline_cadastros', JSON.stringify([]));
+    if (!localStorage.getItem('PARTICIPANTES_CACHE')) localStorage.setItem('PARTICIPANTES_CACHE', JSON.stringify([]));
+
+    // Controle da Câmera
+    let html5QrCode = null;
+
+    // Dados temporários da impressão
+    let dadosEtiquetaAtual = { nome: '', empresa: '', cargo: '' };
+
+
+    /* ========================================================
+       MÓDULO: CONTROLE DE TELA CHEIA (FORÇA NO FIREFOX)
+       ======================================================== */
+    function alternarTelaCheia() {
+        const doc = document.documentElement;
+        if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement) {
+            if (doc.requestFullscreen) {
+                doc.requestFullscreen();
+            } else if (doc.mozRequestFullScreen) { /* Firefox */
+                doc.mozRequestFullScreen();
+            } else if (doc.webkitRequestFullscreen) {
+                doc.webkitRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) { /* Firefox */
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+    }
+
+
+    /* ========================================================
+       MÓDULO: GERENCIADOR DE SEGURANÇA E MENUS DO ADMINISTRADOR
+       ======================================================== */
+    function abrirAdminAuthModal() {
+        const modal = document.getElementById('admin-auth-modal');
+        const input = document.getElementById('admin-pin-input');
+        if (modal && input) {
+            input.value = "";
+            modal.classList.remove('hidden');
+            setTimeout(() => input.focus(), 100);
+        }
+    }
+
+    function fecharAdminAuthModal() {
+        const modal = document.getElementById('admin-auth-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    function validarPinAdmin() {
+        const input = document.getElementById('admin-pin-input');
+        const panel = document.getElementById('admin-menu-panel');
+        if (input && panel) {
+            if (input.value === PIN_ADMINISTRADOR) {
+                fecharAdminAuthModal();
+                panel.classList.remove('hidden'); 
+            } else {
+                alert("PIN Inválido! Acesso negado.");
+                input.value = "";
+                input.focus();
+            }
+        }
+    }
+
+    const pinInputEl = document.getElementById('admin-pin-input');
+    if (pinInputEl) {
+        pinInputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                validarPinAdmin();
+            }
+        });
+    }
+
+    function fecharAdminMenu() {
+        const panel = document.getElementById('admin-menu-panel');
+        if (panel) {
+            panel.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('click', function(event) {
+        const panel = document.getElementById('admin-menu-panel');
+        const modal = document.getElementById('admin-auth-modal');
+        const gearBtn = document.getElementById('admin-gear-btn');
+        
+        if (panel && modal && gearBtn) {
+            if (!panel.contains(event.target) && !gearBtn.contains(event.target) && !modal.contains(event.target)) {
+                panel.classList.add('hidden');
+                modal.classList.add('hidden');
+            }
+        }
+    });
+
+
+    /* ========================================================
+       MÓDULO: MOTOR DE CAPTURA FÍSICO (INTERCEPTAÇÃO HID INTELIGENTE)
+       ======================================================== */
+    let scanBuffer = "";
+    let scanTimeout = null;
+    let lastKeyTime = 0;
+
+    window.addEventListener('keydown', function(e) {
+        if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) {
+            return;
+        }
+
+        const currentTime = Date.now();
+
+        if (scanBuffer.length > 0 && (currentTime - lastKeyTime > 50)) {
+            scanBuffer = "";
+        }
+        lastKeyTime = currentTime;
+
+        if (e.key === 'Enter') {
+            if (scanBuffer.length >= 8) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const finalData = scanBuffer.trim();
+                scanBuffer = "";
+                if (scanTimeout) clearTimeout(scanTimeout);
+                
+                executarAcaoScanner(finalData);
+            } else {
+                scanBuffer = ""; 
+            }
+            return;
+        }
+
+        if (e.key.length === 1) {
+            scanBuffer += e.key;
+
+            if (scanTimeout) clearTimeout(scanTimeout);
+            scanTimeout = setTimeout(() => {
+                if (scanBuffer.length >= 8) {
+                    const finalData = scanBuffer.trim();
+                    scanBuffer = "";
+                    executarAcaoScanner(finalData);
+                } else {
+                    scanBuffer = "";
+                }
+            }, 50); 
+        }
+    }, true); 
+
+    function executarAcaoScanner(conteudoLido) {
+        if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+            document.activeElement.value = "";
+            document.activeElement.blur(); 
+        }
+        
+        processarLeituraFisica(conteudoLido);
+    }
+
+    function atualizarStatusOverlay(titulo, message, iconeClass = "fa-barcode", corBorda = "border-[#0096d6]", corTexto = "text-[#0096d6]") {
+        const overlay = document.getElementById('physical-scan-overlay');
+        const iconWrapper = document.getElementById('scan-icon-wrapper');
+        const icon = document.getElementById('scan-icon');
+        const titleEl = document.getElementById('scan-title');
+        const statusEl = document.getElementById('scan-status');
+
+        if (overlay) overlay.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = titulo;
+        if (statusEl) statusEl.textContent = message;
+        
+        if (icon && iconeClass) {
+            icon.className = `fa-solid ${iconeClass}`;
+        }
+
+        if (iconWrapper) {
+            iconWrapper.className = `h-24 w-24 bg-sky-500/10 border-2 ${corBorda} ${corTexto} rounded-full flex items-center justify-center text-4xl animate-pulse transition-all duration-300`;
+        }
+    }
+
+    function processarLeituraFisica(conteudoLido) {
+        if (checkinConcluidoComSucesso) return;
+
+        console.log("Leitura Física Detectada no Totem:", conteudoLido);
+
+        atualizarStatusOverlay(
+            "Leitura Efetuada", 
+            "Código capturado com sucesso! Identificando formato...", 
+            "fa-barcode"
+        );
+
+        let dadosLimpos = conteudoLido.replace(/\D/g, '').trim();
+        if (dadosLimpos.length > 11) {
+            dadosLimpos = dadosLimpos.slice(-11);
+        }
+
+        setTimeout(() => {
+            if (dadosLimpos.length === 11) {
+                executarCheckInPorTermo(dadosLimpos);
+            } else {
+                executarCheckInPorTermo(conteudoLido);
+            }
+        }, 400); 
+    }
+
+    /* ========================================================
+       COMPORTAMENTO E MÁSCARA DA TELA DE CPF
+       ======================================================== */
+    const inputSearch = document.getElementById('checkin-search');
+    if (inputSearch) {
+        inputSearch.addEventListener('input', e => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            
+            if (value.length === 11) {
+                e.target.blur(); 
+                toggleLoading(true, 'btn-buscar', 'Buscando cadastro...');
+                executarCheckInPorTermo(value);
+            }
+
+            if (value.length > 9) {
+                value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, "$1.$2.$3-$4");
+            } else if (value.length > 6) {
+                value = value.replace(/^(\d{3})(\d{3})(\d{1,3})$/, "$1.$2.$3");
+            } else if (value.length > 3) {
+                value = value.replace(/^(\d{3})(\d{1,3})$/, "$1.$2");
+            }
+            e.target.value = value;
+        });
+    }
+
+    const inputCadCpf = document.getElementById('cad-cpf');
+    if (inputCadCpf) {
+        inputCadCpf.addEventListener('input', e => {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            e.target.value = value;
+        });
+    }
+
+    function changeScreen(screenId) {
+        if (screenId !== 'screen-qrcode') {
+            desligarCamera();
+        }
+
+        ['screen-home', 'screen-checkin', 'screen-cadastro', 'screen-qrcode', 'screen-sucesso'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        
+        document.getElementById(screenId).classList.remove('hidden');
+
+        if (screenId === 'screen-qrcode') {
+            ligarCamera();
+        }
+
+        if (screenId === 'screen-checkin') {
+            setTimeout(() => {
+                const searchInput = document.getElementById('checkin-search');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select(); 
+                }
+            }, 80);
+        }
+    }
+
+    function backToHome() {
+        clearInterval(countdownInterval); 
+        if (timeoutDeSeguranca) clearTimeout(timeoutDeSeguranca);
+        timeoutDeSeguranca = null;
+        checkinConcluidoComSucesso = false;
+
+        document.getElementById('checkin-search').value = '';
+        document.getElementById('form-cadastro').reset();
+        
+        const overlay = document.getElementById('physical-scan-overlay');
+        if (overlay) overlay.classList.add('hidden');
+        
+        if (document.activeElement) document.activeElement.blur();
+
+        destravarTela();
+        
+        const btnBuscar = document.getElementById('btn-buscar');
+        if (btnBuscar) {
+            btnBuscar.innerText = 'Buscar e Confirmar Presença';
+            btnBuscar.disabled = false;
+        }
+        const btnCadastrar = document.getElementById('btn-cadastrar');
+        if (btnCadastrar) {
+            btnCadastrar.innerText = 'Concluir Inscrição';
+            btnCadastrar.disabled = false;
+        }
+        
+        changeScreen('screen-home');
+    }
+
+    /* ========================================================
+       MÓDULO DE LEITURA DE QR CODE (WEB-CAMERA COMPATÍVEL COM HARDWARE DE TOTEM)
+       ======================================================== */
+    function ligarCamera() {
+        const statusDiv = document.getElementById('qr-status');
+        statusDiv.className = "text-sm font-semibold text-yellow-500";
+        statusDiv.innerText = "Iniciando câmera...";
+
+        html5QrCode = new Html5Qrcode("qr-reader");
+        
+        const config = { 
+            fps: 15, 
+            qrbox: { width: 180, height: 180 },
+            aspectRatio: 1.0 
+        };
+
+        // PASSO 1: Mapeia todas as câmeras físicas no Android do totem
+        Html5Qrcode.getCameras().then(devices => {
+            if (devices && devices.length > 0) {
+                const cameraId = devices[0].id; 
+                
+                html5QrCode.start(
+                    cameraId, 
+                    config,
+                    onScanSucesso,
+                    onScanFalha
+                ).then(() => {
+                    statusDiv.className = "text-xs font-semibold text-emerald-400";
+                    statusDiv.innerText = "Câmera ativa! Aponte o QR Code.";
+                }).catch(err => {
+                    console.warn("Erro ao iniciar via ID físico, tentando fallback genérico...");
+                    tentarFallbackCameraGenerica(config, statusDiv);
+                });
+            } else {
+                tentarFallbackCameraGenerica(config, statusDiv);
+            }
+        }).catch(err => {
+            console.warn("Não listou dispositivos de vídeo, forçando inicialização...");
+            tentarFallbackCameraGenerica(config, statusDiv);
+        });
+    }
+
+    function tentarFallbackCameraGenerica(config, statusDiv) {
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            onScanSucesso,
+            onScanFalha
+        ).then(() => {
+            statusDiv.className = "text-xs font-semibold text-emerald-400";
+            statusDiv.innerText = "Câmera ativa!";
+        }).catch(err => {
+            console.error("Falha geral de permissão/inicialização da câmera:", err);
+            statusDiv.className = "text-xs font-semibold text-rose-500";
+            statusDiv.innerText = "Permissão negada ou câmera desconectada.";
+        });
+    }
+
+    function desligarCamera() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                html5QrCode = null;
+                console.log("Câmera desligada.");
+            }).catch(err => {
+                console.error("Erro ao finalizar câmera:", err);
+            });
+        }
+    }
+
+    function onScanSucesso(decodedText, decodedResult) {
+        if (checkinConcluidoComSucesso) return;
+
+        document.getElementById('qr-status').className = "text-xs font-semibold text-emerald-400 animate-pulse";
+        document.getElementById('qr-status').innerText = "Processando QR Code...";
+
+        desligarCamera();
+
+        let dadosLimpos = decodedText.replace(/\D/g, '').trim();
+        if (dadosLimpos.length > 11) {
+            dadosLimpos = dadosLimpos.slice(-11);
+        }
+
+        if (dadosLimpos.length === 11) {
+            executarCheckInPorTermo(dadosLimpos);
+        } else {
+            executarCheckInPorTermo(decodedText.trim());
+        }
+    }
+
+    function onScanFalha(error) {}
+
+
+    /* ========================================================
+       MÓDULO 1: AUTO-PULL (SINCRONIZAÇÃO AUTOMÁTICA SHEETS -> CACHE)
+       ======================================================== */
+    function atualizarBancoLocalDoSheets(callbackSucesso = null, callbackErro = null) {
+        if (!navigator.onLine) {
+            console.log("[Auto-Pull] Dispositivo offline. Abortando atualização.");
+            if (callbackErro) callbackErro("Sem conexão de rede");
+            return;
+        }
+
+        console.log("[Auto-Pull] Buscando novos registros no Google Sheets...");
+        const callbackNome = "jsonp_pull_" + Math.round(100000 * Math.random());
+
+        window[callbackNome] = function(dados) {
+            if (dados && dados.status === "sucesso" && dados.participantes) {
+                localStorage.setItem('PARTICIPANTES_CACHE', JSON.stringify(dados.participantes));
+                console.log(`[Auto-Pull] Cache atualizado com sucesso! ${dados.participantes.length} participantes.`);
+                if (callbackSucesso) callbackSucesso(dados.participantes.length);
+            } else {
+                if (callbackErro) callbackErro("Resposta inválida da API");
+            }
+            delete window[callbackNome];
+            const scriptEl = document.getElementById(callbackNome);
+            if (scriptEl) scriptEl.remove();
+        };
+
+        const script = document.createElement('script');
+        script.src = `${API_URL}?action=obterListaCompleta&callback=${callbackNome}`;
+        script.id = callbackNome;
+        script.onerror = () => {
+            console.error("[Auto-Pull] Falha de comunicação ao atualizar cache.");
+            if (callbackErro) callbackErro("Falha física de requisição");
+        };
+        document.body.appendChild(script);
+    }
+
+
+    /* ========================================================
+       MÓDULO 2: CASCATA DE BUSCA HÍBRIDA (VELOCIDADE DE RESPOSTA < 500ms)
+       ======================================================== */
+    function buscarParticipanteNaCascata(termo) {
+        const termoLimpo = termo.replace(/\D/g, '').trim();
+        const tLower = termo.toLowerCase().trim();
+
+        const cacheStr = localStorage.getItem('PARTICIPANTES_CACHE');
+        if (cacheStr) {
+            const cache = JSON.parse(cacheStr);
+            const localizado = cache.find(p => {
+                const cpfLimpo = (p.cpf || '').replace(/\D/g, '');
+                const nomeLower = (p.nome || '').toLowerCase();
+                return (termoLimpo.length === 11 && cpfLimpo === termoLimpo) || (termoLimpo.length !== 11 && nomeLower.includes(tLower));
+            });
+            if (localizado) return localizado;
+        }
+
+        try {
+            if (typeof PARTICIPANTES_LOCAL !== 'undefined') {
+                const localizadoLocal = PARTICIPANTES_LOCAL.find(p => {
+                    const cpfLimpo = (p.cpf || '').replace(/\D/g, '');
+                    const nomeLower = (p.nome || '').toLowerCase();
+                    return (termoLimpo.length === 11 && cpfLimpo === termoLimpo) || (termoLimpo.length !== 11 && nomeLower.includes(tLower));
+                });
+                if (localizadoLocal) return localizadoLocal;
+            }
+        } catch(e) {
+            console.warn("Nenhum database.js localizado em disco.");
+        }
+
+        return null;
+    }
+
+
+    /* ========================================================
+       MÓDULO 3: AUTO-PUSH (SINCRONIZADOR SILENCIOSO EM SEGUNDO PLANO)
+       ======================================================== */
+    function sincronizarFilaParaOSheets() {
+        if (!navigator.onLine || isSyncing) return;
+
+        const checkinsOffline = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+        const cadastrosOffline = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+
+        if (checkinsOffline.length === 0 && cadastrosOffline.length === 0) return;
+
+        isSyncing = true;
+        console.log(`[Auto-Push] Sincronizando dados pendentes...`);
+
+        if (cadastrosOffline.length > 0) {
+            const cadastro = cadastrosOffline[0];
+            const callbackNome = "jsonp_push_cad_" + Math.round(100000 * Math.random());
+
+            window[callbackNome] = function(resposta) {
+                if (resposta && resposta.status === 'sucesso') {
+                    console.log(`[Auto-Push] Novo cadastro de ${cadastro.nome} sincronizado!`);
+                    const filaAtual = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+                    filaAtual.shift(); 
+                    localStorage.setItem('offline_cadastros', JSON.stringify(filaAtual));
+                }
+                delete window[callbackNome];
+                const scriptEl = document.getElementById(callbackNome);
+                if (scriptEl) scriptEl.remove();
+                isSyncing = false;
+                
+                setTimeout(sincronizarFilaParaOSheets, 1000);
+            };
+
+            const script = document.createElement('script');
+            script.src = `${API_URL}?action=sincronizarCadastroOffline&nome=${encodeURIComponent(cadastro.nome)}&cpf=${encodeURIComponent(cadastro.cpf)}&email=${encodeURIComponent(cadastro.email)}&empresa=${encodeURIComponent(cadastro.empresa)}&cargo=${encodeURIComponent(cadastro.cargo)}&dataHora=${encodeURIComponent(cadastro.dataHora)}&callback=${callbackNome}`;
+            script.id = callbackNome;
+            script.onerror = () => { isSyncing = false; };
+            document.body.appendChild(script);
+            return;
+        }
+
+        if (checkinsOffline.length > 0) {
+            const checkin = checkinsOffline[0];
+            const callbackNome = "jsonp_push_chk_" + Math.round(100000 * Math.random());
+
+            window[callbackNome] = function(resposta) {
+                if (resposta && (resposta.status === 'sucesso' || resposta.status === 'nao_encontrado')) {
+                    console.log(`[Auto-Push] Presença offline do CPF ${checkin.cpf} sincronizada!`);
+                    const filaAtual = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+                    filaAtual.shift(); 
+                    localStorage.setItem('offline_checkins', JSON.stringify(filaAtual));
+                }
+                delete window[callbackNome];
+                const scriptEl = document.getElementById(callbackNome);
+                if (scriptEl) scriptEl.remove();
+                isSyncing = false;
+
+                setTimeout(sincronizarFilaParaOSheets, 1000);
+            };
+
+            const script = document.createElement('script');
+            script.src = `${API_URL}?action=sincronizarCheckInOffline&cpf=${encodeURIComponent(checkin.cpf)}&dataHora=${encodeURIComponent(checkin.dataHora)}&callback=${callbackNome}`;
+            script.id = callbackNome;
+            script.onerror = () => { isSyncing = false; };
+            document.body.appendChild(script);
+            return;
+        }
+    }
+
+
+    /* ========================================================
+       PROCESSAMENTO PRINCIPAL DE ENTRADAS
+       ======================================================== */
+    function executarCheckInPorTermo(termo) {
+        checkinConcluidoComSucesso = false;
+        const termoLimpo = termo.replace(/\D/g, '').trim();
+
+        if (timeoutDeSeguranca) clearTimeout(timeoutDeSeguranca);
+
+        const participante = buscarParticipanteNaCascata(termo);
+        if (participante) {
+            checkinConcluidoComSucesso = true;
+            destravarTela();
+            registrarCheckInOffline(participante);
+            return;
+        }
+
+        if (!navigator.onLine) {
+            console.warn("Dispositivo offline e participante não encontrado localmente.");
+            atualizarStatusOverlay(
+                "Não Encontrado", 
+                "Inscrição não localizada localmente. Redirecionando...", 
+                "fa-user-slash",
+                "border-rose-500",
+                "text-rose-500"
+            );
+            
+            setTimeout(() => {
+                alert("Inscrição não localizada. Por favor, faça seu cadastro presencial!");
+                backToHome();
+            }, 1500);
+            return;
+        }
+
+        atualizarStatusOverlay(
+            "Conectando", 
+            "Buscando novos registros na nuvem...", 
+            "fa-database",
+            "border-[#0096d6]",
+            "text-[#0096d6]"
+        );
+
+        timeoutDeSeguranca = setTimeout(() => {
+            if (!checkinConcluidoComSucesso) {
+                console.warn("Servidor instável. Forçando entrada como visitante.");
+                destravarTela();
+                registrarCheckInOffline({
+                    cpf: termoLimpo || "00000000000",
+                    nome: "Convidado Confirmado",
+                    empresa: "InfinityCorp",
+                    cargo: "Convidado Especial"
+                });
+            }
+        }, 8000);
+
+        const callbackName = "jsonp_callback_" + Math.round(100000 * Math.random());
+        
+        window[callbackName] = function(dados) {
+            delete window[callbackName];
+            const scriptTag = document.getElementById(callbackName);
+            if (scriptTag) scriptTag.remove();
+
+            if (timeoutDeSeguranca) {
+                clearTimeout(timeoutDeSeguranca);
+                timeoutDeSeguranca = null;
+            }
+            destravarTela();
+
+            if (dados && dados.status === "sucesso") {
+                checkinConcluidoComSucesso = true;
+                const nomeReal = dados.nome || "Participante Confirmado";
+                const empresaReal = dados.empresa || "";
+                const cargoReal = dados.cargo || "";
+
+                atualizarStatusOverlay(
+                    "Participante Identificado!", 
+                    `Olá, ${nomeReal.split(' ')[0]}! Gerando credencial...`, 
+                    "fa-user-check",
+                    "border-emerald-500",
+                    "text-emerald-400"
+                );
+
+                setTimeout(() => {
+                    mostrarSucesso(nomeReal, empresaReal, cargoReal);
+                }, 1500); 
+                
+            } else {
+                atualizarStatusOverlay(
+                    "Não Encontrado", 
+                    "Inscrição não localizada. Redirecionando...", 
+                    "fa-user-slash",
+                    "border-rose-500",
+                    "text-rose-500"
+                );
+                
+                setTimeout(() => {
+                    alert("Inscrição não localizada. Por favor, faça seu cadastro presencial!");
+                    backToHome();
+                }, 1500);
+            }
+        };
+
+        const script = document.createElement("script");
+        script.src = `${API_URL}?action=buscarEConfirmarNativo&termo=${termoLimpo || termo}&callback=${callbackName}`;
+        script.id = callbackName;
+        script.onerror = function() {
+            destravarTela();
+            console.error("Erro de conexão na requisição em tempo real.");
+        };
+
+        document.body.appendChild(script);
+    }
+
+    function registrarCheckInOffline(participante) {
+        let logs = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+        
+        const jaExiste = logs.some(c => c.cpf === participante.cpf);
+        if (!jaExiste) {
+            logs.push({
+                cpf: participante.cpf,
+                nome: participante.nome,
+                empresa: participante.empresa,
+                cargo: participante.cargo,
+                dataHora: new Date().toLocaleString('pt-BR')
+            });
+            localStorage.setItem('offline_checkins', JSON.stringify(logs));
+        }
+
+        atualizarStatusOverlay(
+            "Check-In Confirmado!", 
+            `Olá, ${participante.nome.split(' ')[0]}! Liberando credencial...`, 
+            "fa-user-shield",
+            "border-emerald-500",
+            "text-emerald-400"
+        );
+
+        setTimeout(sincronizarFilaParaOSheets, 500);
+
+        setTimeout(() => {
+            mostrarSucesso(participante.nome, participante.empresa, participante.cargo);
+        }, 1500);
+    }
+
+    async function cadastrarEConfirmar(event) {
+        event.preventDefault();
+
+        if (timeoutDeSeguranca) {
+            clearTimeout(timeoutDeSeguranca);
+            timeoutDeSeguranca = null;
+        }
+
+        const nomeLocal = document.getElementById('cad-nome').value.trim();
+        const cpfCompleto = document.getElementById('cad-cpf').value.trim();
+        const cpfLimpo = cpfCompleto.replace(/\D/g, '').trim();
+        const emailLocal = document.getElementById('cad-email').value.trim();
+        const empresaLocal = document.getElementById('cad-empresa').value.trim() || "N/A";
+        const cargoLocal = document.getElementById('cad-cargo').value.trim() || "N/A";
+
+        toggleLoading(true, 'btn-cadastrar', 'Realizando cadastro...');
+
+        let cadastrosOffline = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+        cadastrosOffline.push({
+            nome: nomeLocal,
+            cpf: cpfLimpo,
+            email: emailLocal,
+            empresa: empresaLocal,
+            cargo: cargoLocal,
+            dataHora: new Date().toLocaleString('pt-BR')
+        });
+        localStorage.setItem('offline_cadastros', JSON.stringify(cadastrosOffline));
+
+        checkinConcluidoComSucesso = true;
+        destravarTela();
+        
+        setTimeout(sincronizarFilaParaOSheets, 500);
+
+        mostrarSucesso(nomeLocal, empresaLocal, cargoLocal);
+    }
+
+    function mostrarSucesso(nome, empresa, cargo) {
+        destravarTela();
+
+        const overlay = document.getElementById('physical-scan-overlay');
+        if (overlay) overlay.classList.add('hidden');
+
+        document.getElementById('lbl-nome-sucesso').textContent = nome;
+        const empresaBox = document.getElementById('lbl-empresa-box');
+        
+        const limparTexto = (texto) => {
+            if (!texto) return "";
+            const t = texto.trim().toUpperCase();
+            if (t === "N/A" || t === "NULL" || t === "UNDEFINED" || t === "") {
+                return "";
+            }
+            return texto.trim();
+        };
+
+        const empLimpa = limparTexto(empresa);
+        const cargLimpo = limparTexto(cargo);
+
+        let infoText = "";
+        if (empLimpa && cargLimpo) {
+            infoText = `${empLimpa} • ${cargLimpo}`;
+        } else if (empLimpa) {
+            infoText = empLimpa;
+        } else if (cargLimpo) {
+            infoText = cargLimpo;
+        }
+
+        if (infoText) {
+            empresaBox.classList.remove('hidden');
+            document.getElementById('lbl-empresa-sucesso').textContent = infoText;
+        } else {
+            empresaBox.classList.add('hidden');
+        }
+
+        dadosEtiquetaAtual = {
+            nome: nome,
+            empresa: empLimpa,
+            cargo: cargLimpo
+        };
+
+        changeScreen('screen-sucesso');
+
+        let tempoRestante = 15;
+        const labelContador = document.getElementById('contador-regressivo');
+        if (labelContador) {
+            labelContador.textContent = tempoRestante;
+        }
+
+        // NOVIDADE: Dispara a impressão SILENCIOSA AUTOMATICAMENTE assim que entra na tela de sucesso!
+        setTimeout(() => {
+            dispararImpressaoManual();
+        }, 500);
+
+        clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => {
+            tempoRestante--;
+            const spanC = document.getElementById('contador-regressivo');
+            if (spanC) {
+                spanC.textContent = tempoRestante;
+            }
+            if (tempoRestante <= 0) {
+                clearInterval(countdownInterval);
+                backToHome();
+            }
+        }, 1000);
+    }
+
+    /* ========================================================
+       SISTEMA DE EXPORTAÇÃO E MANUTENÇÃO DOS DADOS OFFLINE
+       ======================================================== */
+    function exportarDadosOffline() {
+        const logs = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+        const cadastros = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+
+        if (logs.length === 0 && cadastros.length === 0) {
+            alert("Nenhum dado offline registrado neste totem.");
+            return;
+        }
+
+        let csvContent = "\uFEFF"; 
+        
+        csvContent += "=== REGISTROS DE CHECK-IN OFFLINE ===\n";
+        csvContent += "CPF,Nome,Empresa,Cargo,Data/Hora\n";
+        logs.forEach(item => {
+            csvContent += `"${item.cpf}","${item.nome}","${item.empresa}","${item.cargo}","${item.dataHora}"\n`;
+        });
+
+        csvContent += "\n\n";
+
+        csvContent += "=== NOVOS CADASTROS OFFLINE ===\n";
+        csvContent += "CPF,Nome,Email,Empresa,Cargo,Data/Hora\n";
+        cadastros.forEach(item => {
+            csvContent += `"${item.cpf}","${item.nome}","${item.email}","${item.empresa}","${item.cargo}","${item.dataHora}"\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        
+        const dataAtual = new Date().toISOString().slice(0, 10);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `dados_offline_totem_${dataAtual}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function limparDadosOffline() {
+        const logs = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+        const cadastros = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+        const total = logs.length + cadastros.length;
+
+        if (total === 0) {
+            alert("Nenhum dado local armazenado para limpar.");
+            return;
+        }
+
+        if (confirm(`Deletar permanentemente as ${total} ações offline salvas localmente?`)) {
+            localStorage.setItem('offline_checkins', '[]');
+            localStorage.setItem('offline_cadastros', '[]');
+            localStorage.setItem('PARTICIPANTES_CACHE', '[]');
+            alert("Memória limpa com sucesso!");
+        }
+    }
+
+    /* ========================================================
+       MÓDULO DE IMPRESSÃO (AUTO-HEALING INTELIGENTE)
+       ======================================================== */
+    function dispararImpressaoManual() {
+        if (dadosEtiquetaAtual.nome) {
+            imprimirEtiquetaPOS80(
+                dadosEtiquetaAtual.nome, 
+                dadosEtiquetaAtual.empresa, 
+                dadosEtiquetaAtual.cargo
+            );
+        }
+    }
+
+    // MODIFICADO: Função com cascata de conexão para vencer bloqueios CORS/HTTPS no Firefox
+        // Função com cascata de conexão corrigida e depuração ativa
+    async function imprimirEtiquetaPOS80(nome, empresa, cargo) {
+        const payload = {
+            content: [
+                { type: "text", value: "INFINITY", align: "center", weight: "bold", size: "large" },
+                { type: "divider" },
+                { type: "text", value: nome.toUpperCase(), align: "center", weight: "bold", size: "large" },
+                (empresa && empresa !== "N/A" && empresa !== "NULL") ? { type: "text", value: empresa.toUpperCase(), align: "center", weight: "bold", size: "normal" } : null,
+                (cargo && cargo !== "N/A" && cargo !== "NULL") ? { type: "text", value: cargo.toUpperCase(), align: "center", weight: "regular", size: "normal" } : null,
+                { type: "divider" },
+                { type: "feed", lines: 3 }
+            ].filter(Boolean)
+        };
+
+        const rawBody = JSON.stringify(payload);
+
+        // Rotas de tentativa sem o "no-cors" para podermos capturar a falha real
+        const rotas = [
+            { url: "http://127.0.0.1:9100/print", label: "Loopback (127.0.0.1)" },
+            { url: "http://localhost:9100/print", label: "Localhost" }
+        ];
+
+        console.log("[Impressão] Iniciando disparos de comunicação...");
+        let errosAcumulados = [];
+
+        for (let i = 0; i < rotas.length; i++) {
+            try {
+                console.log(`[Impressão] Tentando rota: ${rotas[i].label}`);
+                
+                const response = await fetch(rotas[i].url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: rawBody
+                });
+
+                if (response.ok) {
+                    console.log("[Impressão] Sucesso via Cleanter!");
+                    return; // Imprimiu com sucesso silencioso, sai da função
+                } else {
+                    errosAcumulados.push(`${rotas[i].label}: Status ${response.status}`);
+                }
+            } catch (err) {
+                errosAcumulados.push(`${rotas[i].label}: ${err.message}`);
+            }
+        }
+
+        // Se chegou aqui, as comunicações com o Cleanter falharam
+        console.warn("[Impressão] Comunicação direta indisponível:", errosAcumulados);
+        
+        // Alerta informativo de debug na tela para ajudar você a entender o bloqueio do Firefox
+        alert(
+            "⚠️ COMUNICAÇÃO SILENCIOSA FALHOU!\n\n" +
+            "Motivos:\n" + errosAcumulados.join("\n") + "\n\n" +
+            "O Totem usará a impressão padrão do sistema agora."
+        );
+
+        // Dispara o fallback nativo (que agora está calibrado em modo Retrato/Grande no CSS)
+        executarImpressaoNativa(nome, empresa, cargo);
+    }
+
+
+    function executarImpressaoNativa(nome, empresa, cargo) {
+        const antigo = document.getElementById('print-section');
+        if (antigo) antigo.remove();
+
+        const printDiv = document.createElement('div');
+        printDiv.id = 'print-section';
+        
+        printDiv.innerHTML = `
+            <div class="nome">${nome}</div>
+            ${(empresa && empresa !== "N/A" && empresa !== "NULL") ? `<div class="empresa">${empresa}</div>` : ''}
+            ${(cargo && cargo !== "N/A" && cargo !== "NULL") ? `<div class="cargo">${cargo}</div>` : ''}
+        `;
+        
+        document.body.appendChild(printDiv);
+
+        window.print();
+        
+        setTimeout(() => {
+            if (printDiv) printDiv.remove();
+        }, 1000);
+    }
+
+    function toggleLoading(active, buttonId, text) {
+        const btn = document.getElementById(buttonId);
+        if(btn) {
+            btn.disabled = active;
+            btn.innerText = text;
+        }
+        document.body.style.pointerEvents = active ? 'none' : 'auto';
+        document.body.style.opacity = active ? '0.7' : '1';
+    }
+
+    function destravarTela() {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.opacity = '1';
+        const inputCpf = document.getElementById('checkin-search');
+        if (inputCpf) inputCpf.disabled = false;
+    }
+
+
+    /* ========================================================
+       GERENCIADOR DE SINCRONIZAÇÃO VISUAL (ADMIN)
+       ======================================================== */
+    function atualizarProgressoSync(porcentagem, activeStepId, labelText, checkIconId = null, erro = false) {
+        document.getElementById('sync-porcentagem').textContent = `${porcentagem}%`;
+        document.getElementById('sync-progressbar').style.width = `${porcentagem}%`;
+
+        const stepEl = document.getElementById(activeStepId);
+        if (stepEl) {
+            stepEl.className = erro ? "flex items-center gap-3 text-red-500 font-bold" : "flex items-center gap-3 text-sky-400 font-bold animate-pulse";
+            if (labelText) {
+                const labelSpan = stepEl.querySelector('span');
+                if (labelSpan) labelSpan.textContent = labelText;
+            }
+        }
+
+        if (checkIconId) {
+            const iconEl = document.getElementById(checkIconId);
+            if (iconEl) {
+                if (erro) {
+                    iconEl.className = "fa-solid fa-triangle-exclamation text-red-500 animate-bounce";
+                } else {
+                    iconEl.className = "fa-solid fa-circle-check text-emerald-400 animate-scale";
+                }
+            }
+        }
+    }
+
+    function resetarUIEtapasSync() {
+        const steps = ['step-net', 'step-pull', 'step-push-cad', 'step-push-chk'];
+        const icons = ['icon-net', 'icon-pull', 'icon-push-cad', 'icon-push-chk'];
+        
+        steps.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.className = "flex items-center gap-3 text-slate-500";
+        });
+        
+        icons.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.className = "fa-regular fa-circle";
+        });
+
+        document.getElementById('txt-net').textContent = "Verificando status de rede...";
+        document.getElementById('txt-pull').textContent = "Aguardando download de participantes...";
+        document.getElementById('txt-push-cad').textContent = "Aguardando envio de novos cadastros...";
+        document.getElementById('txt-push-chk').textContent = "Aguardando envio de check-ins...";
+
+        document.getElementById('sync-porcentagem').textContent = "0%";
+        document.getElementById('sync-progressbar').style.width = "0%";
+
+        const btnFechar = document.getElementById('btn-fechar-sync');
+        if (btnFechar) {
+            btnFechar.disabled = true;
+            btnFechar.innerText = "Aguardando Conclusão...";
+            btnFechar.className = "w-full bg-slate-850 hover:bg-slate-800 disabled:opacity-50 py-4 rounded-xl text-sm font-bold text-slate-400 transition-all cursor-not-allowed";
+        }
+    }
+
+    function fecharOverlaySync() {
+        document.getElementById('sync-overlay').classList.add('hidden');
+    }
+
+    async function iniciarSincronizacaoManual() {
+        resetarUIEtapasSync();
+        document.getElementById('sync-overlay').classList.remove('hidden');
+
+        // --- ETAPA 1: VERIFICAR CONEXÃO DE REDE ---
+        await new Promise(r => setTimeout(r, 800));
+        if (!navigator.onLine) {
+            atualizarProgressoSync(15, 'step-net', 'Sem conexão com a Internet!', 'icon-net', true);
+            ajustarBotaoFinalSync("Sem Rede Física");
+            return;
+        }
+        atualizarProgressoSync(20, 'step-net', 'Conexão ativa!', 'icon-net');
+
+        // --- ETAPA 2: AUTO-PULL (BAIXAR PLANILHA COMPLETA) ---
+        await new Promise(r => setTimeout(r, 600));
+        atualizarProgressoSync(25, 'step-pull', 'Baixando dados do Sheets...');
+        
+        try {
+            const count = await new Promise((resolve, reject) => {
+                atualizarBancoLocalDoSheets(
+                    (total) => resolve(total),
+                    (err) => reject(err)
+                );
+            });
+            atualizarProgressoSync(50, 'step-pull', `Sucesso! Cache local: ${count} pessoas.`, 'icon-pull');
+        } catch (e) {
+            atualizarProgressoSync(50, 'step-pull', 'Falha ao sincronizar planilha.', 'icon-pull', true);
+        }
+
+        // --- ETAPA 3: AUTO-PUSH (CADASTROS OFFLINE) ---
+        await new Promise(r => setTimeout(r, 600));
+        const cadastros = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+        if (cadastros.length === 0) {
+            atualizarProgressoSync(75, 'step-push-cad', 'Sem novos cadastros pendentes.', 'icon-push-cad');
+        } else {
+            atualizarProgressoSync(65, 'step-push-cad', `Subindo ${cadastros.length} novos cadastros...`);
+            await processarFilaSincronizacaoCadastrosPromise();
+            atualizarProgressoSync(75, 'step-push-cad', `Cadastros sincronizados no Sheets!`, 'icon-push-cad');
+        }
+
+        // --- ETAPA 4: AUTO-PUSH (CHECK-INS OFFLINE) ---
+        await new Promise(r => setTimeout(r, 600));
+        const checkins = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+        if (checkins.length === 0) {
+            atualizarProgressoSync(100, 'step-push-chk', 'Check-ins sincronizados no Sheets!', 'icon-push-chk');
+        } else {
+            atualizarProgressoSync(85, 'step-push-chk', `Sincronizando ${checkins.length} registros...`);
+            await processarFilaSincronizacaoCheckinsPromise();
+            atualizarProgressoSync(100, 'step-push-chk', 'Check-ins sincronizados no Sheets!', 'icon-push-chk');
+        }
+
+        ajustarBotaoFinalSync("Sincronização Concluída!");
+    }
+
+    function ajustarBotaoFinalSync(mensagem) {
+        const btnFechar = document.getElementById('btn-fechar-sync');
+        if (btnFechar) {
+            btnFechar.disabled = false;
+            btnFechar.innerText = message; 
+            btnFechar.className = "w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl text-sm font-extrabold transition-all cursor-pointer shadow-lg";
+        }
+    }
+
+    async function processarFilaSincronizacaoCadastrosPromise() {
+        while (true) {
+            const cadastros = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+            if (cadastros.length === 0) break;
+            const cadastro = cadastros[0];
+
+            await new Promise((resolve) => {
+                const callbackNome = "jsonp_manual_cad_" + Math.round(100000 * Math.random());
+                window[callbackNome] = function() {
+                    const fila = JSON.parse(localStorage.getItem('offline_cadastros')) || [];
+                    fila.shift();
+                    localStorage.setItem('offline_cadastros', JSON.stringify(fila));
+                    delete window[callbackNome];
+                    const script = document.getElementById(callbackNome);
+                    if (script) script.remove();
+                    resolve();
+                };
+                const script = document.createElement('script');
+                script.src = `${API_URL}?action=sincronizarCadastroOffline&nome=${encodeURIComponent(cadastro.nome)}&cpf=${encodeURIComponent(cadastro.cpf)}&email=${encodeURIComponent(cadastro.email)}&empresa=${encodeURIComponent(cadastro.empresa)}&cargo=${encodeURIComponent(cadastro.cargo)}&dataHora=${encodeURIComponent(cadastro.dataHora)}&callback=${callbackNome}`;
+                script.id = callbackNome;
+                script.onerror = () => { resolve(); }; 
+                document.body.appendChild(script);
+            });
+        }
+    }
+
+    async function processarFilaSincronizacaoCheckinsPromise() {
+        while (true) {
+            const checkins = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+            if (checkins.length === 0) break;
+            const checkin = checkins[0];
+
+            await new Promise((resolve) => {
+                const callbackNome = "jsonp_manual_chk_" + Math.round(100000 * Math.random());
+                window[callbackNome] = function() {
+                    const fila = JSON.parse(localStorage.getItem('offline_checkins')) || [];
+                    fila.shift();
+                    localStorage.setItem('offline_checkins', JSON.stringify(fila));
+                    delete window[callbackNome];
+                    const script = document.getElementById(callbackNome);
+                    if (script) script.remove();
+                    resolve();
+                };
+                const script = document.createElement('script');
+                script.src = `${API_URL}?action=sincronizarCheckInOffline&cpf=${encodeURIComponent(checkin.cpf)}&dataHora=${encodeURIComponent(checkin.dataHora)}&callback=${callbackNome}`;
+                script.id = callbackNome;
+                script.onerror = () => { resolve(); };
+                document.body.appendChild(script);
+            });
+        }
+    }
+
+    if (navigator.onLine) {
+        atualizarBancoLocalDoSheets(); 
+    }
+
+    setInterval(sincronizarFilaParaOSheets, INTERVALO_SYNC_UP);   
+    setInterval(atualizarBancoLocalDoSheets, INTERVALO_SYNC_DOWN); 
+    </script>
+</body>
+</html>
