@@ -135,24 +135,29 @@
                 color: #000000 !important;
             }
 
-            #print-section {
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: center !important; 
-                align-items: center !important;
-                text-align: center !important;
-                
-                width: 100% !important; /* Ocupa toda a largura da etiqueta */
-                margin: 0 !important;
-                /* Ajuste o padding para dar um respiro nas bordas esquerda/direita */
-                padding: 10px 15px !important; 
-                box-sizing: border-box !important;
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                        
-                    /* 2. ESTE É O SEGREDO: Aumente este valor para a etiqueta avançar mais */
-                padding-bottom: 80mm !important; /* Teste com 30mm, 35mm ou 40mm até chegar
-                }
+            @media print {
+    #print-section {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important; 
+        align-items: center !important;
+        text-align: center !important;
+        width: 100% !important;
+        margin: 0 !important;
+        
+        /* 1. AJUSTE AS MARGENS INTERNAS AQUI: */
+        padding-top: 10px !important;
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        
+        /* 2. ESTE É O SEGREDO: Aumente este valor para a etiqueta avançar mais */
+        padding-bottom: 35mm !important; /* Teste com 30mm, 35mm ou 40mm até chegar na altura ideal de corte */
+        
+        box-sizing: border-box !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+}
 
             /* AJUSTE OS TAMANHOS DE FONTE AQUI: */
             #print-section .nome {
